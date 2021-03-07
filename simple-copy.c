@@ -1,4 +1,4 @@
-#include <asm/io.h>
+#include <sys/io.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,7 +21,7 @@
 static void write_data(unsigned char data, unsigned int clock)
 {
 	data &= 0x0f;
-	outb(data | clock, BASEPORT);
+    outb (data | clock, BASEPORT);
 }
 
 static int read_noack(unsigned char clock, unsigned char *ret)
@@ -30,10 +30,10 @@ static int read_noack(unsigned char clock, unsigned char *ret)
 	unsigned int cx = TIMEOUT_TRIES;
 
 	while (1) {
-		c0 = inb(DATAPORT) >> 3;
+		c0 = inb (DATAPORT) >> 3;
 		usleep(DELAY);
 		if ((c0 & 0x10) ^ clock)  {
-			c1 = inb(DATAPORT) >> 3;
+			c1 = inb (DATAPORT) >> 3;
 			if (c0 == c1)
 				break;
 		}

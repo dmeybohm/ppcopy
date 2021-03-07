@@ -5,6 +5,8 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <sys/io.h>
 
 #define END_MAGIC 	0xe0
 #define COMMIT_MAGIC	0x15
@@ -14,21 +16,6 @@
 #define DATAPORT	(BASEPORT+1)
 
 #define DELAY 		1
-
-extern inline void outb (unsigned char value, unsigned short port)
-{
-	__asm__ __volatile__("out" "b"
-			" %"
-			"b"
-			"0,%w" "1" : : "a" (value), "Nd" (port));
-} 
-extern inline unsigned char inb (unsigned short port)
-{
-	unsigned char _v;
-	__asm__ __volatile__ ("in" "b" " %" "w" "1,%" "" "0":"=a"(_v):
-			"Nd"(port));
-	return _v;
-}
 
 static void print_current(void)
 {
@@ -40,7 +27,7 @@ static void print_current(void)
 static void write_data(unsigned char data, unsigned int clock)
 {
 	data &= 0x0f;
-	outb(data | clock, BASEPORT);
+    outb (data | clock, BASEPORT);
 }
 
 static unsigned char read_noack(unsigned char clock)
@@ -48,10 +35,10 @@ static unsigned char read_noack(unsigned char clock)
 	unsigned char c0, c1;
 
 	while (1) {
-		c0 = inb(DATAPORT) >> 3;
+		c0 = inb (DATAPORT) >> 3;
 		usleep(DELAY);
 		if ((c0 & 0x10) ^ clock)  {
-			c1 = inb(DATAPORT) >> 3;
+			c1 = inb (DATAPORT) >> 3;
 			if (c0 == c1)
 				break;
 		}
