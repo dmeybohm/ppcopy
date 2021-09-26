@@ -4,8 +4,11 @@ Copy files over the parallel port using Linux and DOS.
 
 ## Building
 
-To build the Linux utilites, type `make`. To build the DOS utilities, change
-your directory to the `asm` folder, and type `make`.
+To build the Linux utilites, type `make`. 
+
+To build the DOS utilities, change your directory to the `asm` folder, and type
+`make`.  You will need the [Netwide Assembler](https://www.nasm.us/) to build
+the DOS utilities.
 
 ## Usage
 
