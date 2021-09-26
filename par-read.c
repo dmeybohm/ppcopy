@@ -21,7 +21,7 @@
 static void write_data(unsigned char data, unsigned int clock)
 {
 	data &= 0x0f;
-    outb (data | clock, BASEPORT);
+	outb (data | clock, BASEPORT);
 }
 
 static int read_noack(unsigned char clock, unsigned char *ret)
@@ -89,11 +89,6 @@ int main(int argc, char *argv[])
 	FILE * fout;
 	
 	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
-
-	if (argc != 2) {
-		fprintf(stderr, "Usage: simple-copy <file>\n");
-		exit(1);
-	}
 
 	fout = stdout;
 
