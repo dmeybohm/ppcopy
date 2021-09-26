@@ -34,20 +34,21 @@ The file will be written to `<output>`
 
 ### Usage on DOS
 
-There is an assembly language version that you can use for readingon DOS. It consists
-of two .COM programs, `parclear.com` and `parread.com`. This are optimized
-to be small so that you can load them via the `debug` utility if you have
-no other way of copying files on the DOS machine.
+There is an assembly language version that you can use for reading on DOS. It
+consists of two .COM programs, `parclear.com` and `parread.com`. They are
+optimized to be small so that you can load them via the `debug` utility if you
+have no other way of copying files to the DOS machine.
 
 To use it, connect a LapLink cable between the Linux computer and the DOS
-machine. Then, run `parwrite` on the Linux computer. On the DOS computer,
-run 
+machine. On the DOS computer, run 
 
 ```cmd
 parclear
 ```
 
-After that, run
+After that, then, run `par-write` on the Linux computer. 
+
+Finally, on the DOS computer you're copying to, run
 
 ```
 parread
