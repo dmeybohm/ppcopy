@@ -21,6 +21,13 @@ This builds all four programs:
 
 ### Build Options
 
+You can build specific targets:
+
+```sh
+make linux   # Build only Linux programs (par-read, par-write)
+make dos     # Build only DOS programs (parread.com, parclear.com)
+```
+
 The DOS assembly programs support different debug levels:
 
 ```sh
