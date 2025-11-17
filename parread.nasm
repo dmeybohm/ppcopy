@@ -15,7 +15,9 @@
 ; Turn these off for smaller code,
 ;   on for more verbosity/safety.
 ;
-%define DEBUG		0	; 0, 1, or 2
+%ifndef DEBUG
+%define DEBUG		0	; 0, 1, or 2 (can be overridden from command line)
+%endif
 %define CLOSE_FILE	0
 
 ;

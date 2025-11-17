@@ -1,0 +1,22 @@
+# Build artifacts - Linux binaries
+par-read
+par-write
+
+# Build artifacts - DOS binaries
+*.com
+
+# Object files
+*.o
+
+# Editor temporary files
+*.swp
+*~
+.*.swp
+
+# macOS
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
