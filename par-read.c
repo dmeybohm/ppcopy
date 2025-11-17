@@ -111,7 +111,7 @@ again:
 		fprintf(stderr, "timed out reading size\n");
 		goto again;
 	}
-	printf("size = (%05d)\n", size);
+	fprintf(stderr, "size = (%05d)\n", size);
 
 	p = malloc(size);
 
