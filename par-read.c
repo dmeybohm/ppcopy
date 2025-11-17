@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
 	unsigned short checksum, size;
 	unsigned short sum = 0, i;
 	FILE * fout;
-	
+	int ret;
+
 	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
 
 	fout = stdout;
@@ -97,8 +98,12 @@ int main(int argc, char *argv[])
 	write_data(0x00, 0x10);
 again:
 	start = 0;
-	while (start != START_MAGIC && read_octet(START_ACK, &start) != OK) {
-		fprintf(stderr, "timed out reading start magic (read %x)\n", start);
+	while (start != START_MAGIC && (ret = read_octet(START_ACK, &start)) != OK) {
+		if (ret == TIMEOUT) {
+			fprintf(stderr, "timed out reading start magic");
+		} else {
+			fprintf(stderr, "invalid start magic read %x, expected %x\n", start, START_MAGIC);
+		}
 	}
 
 	if (read_word(&checksum) != OK) {
