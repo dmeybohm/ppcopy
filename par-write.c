@@ -1,3 +1,4 @@
+// vim: sw=8 ts=8 noet
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -171,7 +172,7 @@ again:
 
 	end = time(NULL);
 	fprintf(stderr, "%d bytes / %lu seconds = %lu bytes/second\n",
-		(unsigned) size, (unsigned) end-begin, ((unsigned) size) / ((unsigned)
-		end-begin));
+		(unsigned) size, (unsigned long) end-begin, ((unsigned long) size) / 
+                ((unsigned long) end-begin));
 	exit (0);
 }

@@ -1,3 +1,4 @@
+// vim: sw=8 ts=8 noet
 #include <sys/io.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,7 +58,7 @@ static int read_status(unsigned char clock, unsigned char ack,
 
 static int read_octet(unsigned int ack, unsigned char *ret)
 {
-	unsigned char low, high;
+	unsigned char low = 0, high = 0;
 
 	if (read_status(0x00, ack, &low) == TIMEOUT)
 		return TIMEOUT;
@@ -95,10 +96,10 @@ int main(int argc, char *argv[])
 	/* reset -- is this necessary? */
 	write_data(0x00, 0x10);
 again:
-	while (read_octet(START_ACK, &start) != OK)
-		fprintf(stderr, "timed out reading start\n");
-
-	printf("read: (%x)\n", size);
+	start = 0;
+	while (start != START_MAGIC && read_octet(START_ACK, &start) != OK) {
+		fprintf(stderr, "timed out reading start magic (read %x)\n", start);
+	}
 
 	if (read_word(&checksum) != OK) {
 		fprintf(stderr, "timed out reading checksum\n");
@@ -126,6 +127,11 @@ again:
 
 	fwrite(p, sizeof(char), i, fout);
 	fclose(fout);
+
+	if (sum != checksum) {
+		fprintf(stderr, "WARNING: checksum mismatch - expected %x, got %x\n", 
+			checksum, sum);
+	}
 
 	return 0;
 }
