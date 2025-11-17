@@ -102,7 +102,7 @@ again:
 		if (ret == TIMEOUT) {
 			fprintf(stderr, "timed out reading start magic");
 		} else {
-			fprintf(stderr, "invalid start magic read %x, expected %x\n", start, START_MAGIC);
+			fprintf(stderr, "invalid start magic. read %x, expected %x\n", start, START_MAGIC);
 		}
 	}
 
