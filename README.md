@@ -4,11 +4,39 @@ Copy files over the parallel port using Linux and DOS.
 
 ## Building
 
-To build the Linux utilites, type `make`. 
+To build everything (both Linux and DOS utilities), type:
 
-To build the DOS utilities, change your directory to the `asm` folder, and type
-`make`.  You will need the [Netwide Assembler](https://www.nasm.us/) to build
-the DOS utilities.
+```sh
+make
+```
+
+This builds all four programs:
+- `par-read` and `par-write` (Linux utilities)
+- `parread.com` and `parclear.com` (DOS utilities)
+
+### Requirements
+
+- **GCC** (or compatible C compiler) for Linux utilities
+- **[NASM](https://www.nasm.us/)** (Netwide Assembler) for DOS utilities
+
+### Build Options
+
+You can build specific targets:
+
+```sh
+make linux   # Build only Linux programs (par-read, par-write)
+make dos     # Build only DOS programs (parread.com, parclear.com)
+```
+
+The DOS assembly programs support different debug levels:
+
+```sh
+make parread.com DEBUG=0   # Minimal size (188 bytes, default)
+make parread.com DEBUG=1   # With error messages (287 bytes)
+make parread.com DEBUG=2   # Verbose debugging (571 bytes)
+```
+
+The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
 
 ## Usage
 
