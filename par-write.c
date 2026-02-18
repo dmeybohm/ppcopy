@@ -171,8 +171,12 @@ again:
 	}
 
 	end = time(NULL);
-	fprintf(stderr, "%d bytes / %lu seconds = %lu bytes/second\n",
-		(unsigned) size, (unsigned long) end-begin, ((unsigned long) size) / 
-                ((unsigned long) end-begin));
+	if (end > begin) {
+		fprintf(stderr, "%d bytes / %lu seconds = %lu bytes/second\n",
+			(unsigned) size, (unsigned long) end-begin,
+			((unsigned long) size) / ((unsigned long) end-begin));
+	} else {
+		fprintf(stderr, "%d bytes in < 1 second\n", (unsigned) size);
+	}
 	exit (0);
 }

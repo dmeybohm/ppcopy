@@ -43,7 +43,8 @@ static int read_noack(unsigned char clock, unsigned char *ret)
 	}
 
 	fprintf(stderr, "read_status(clock=%x,data=%x)\n",clock,c0);
-	return (c0 & 0x0f);
+	*ret = c0 & 0x0f;
+	return OK;
 }
 
 static int read_status(unsigned char clock, unsigned char ack,
@@ -119,6 +120,10 @@ again:
 	fprintf(stderr, "size = (%05d)\n", size);
 
 	p = malloc(size);
+	if (p == NULL) {
+		fprintf(stderr, "malloc: out of memory\n");
+		return 1;
+	}
 
 	fprintf(stderr, "Reading data\n");
 	for (i = 0; i < size; i++) {
