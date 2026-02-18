@@ -127,16 +127,21 @@
 ; chunk over the parallel port using the ppcopy wire protocol.
 ;
 start:
-	cld
-
 	; Parse command line for filename
-	mov si,0x81
+	mov ax,0x81		; start with 0xb8 so file(1) detects COM
+	xchg ax,si
+	cld
 .skip_spaces:
 	lodsb
 	cmp al,' '
 	je .skip_spaces
 	cmp al,0x0d
-	je no_args
+	jne .has_arg
+	mov dx,PTR(usage_str)
+	mov ah,0x09
+	int 0x21
+	int 0x20
+.has_arg:
 	dec si			; back up to first non-space char
 	mov dx,si		; DX = start of filename (ASCIIZ)
 .find_end:
@@ -228,13 +233,6 @@ send_terminator:
 exit:
 	mov ah,0x4c		; DOS exit fn
 	int 0x21		;   with return code in %al
-
-no_args:
-	mov dx,PTR(usage_str)
-	mov ah,0x09
-	int 0x21
-	int 0x20
-
 
 ; I/O routines
 ;
