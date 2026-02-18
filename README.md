@@ -10,9 +10,9 @@ To build everything (both Linux and DOS utilities), type:
 make
 ```
 
-This builds all four programs:
+This builds all five programs:
 - `par-read` and `par-write` (Linux utilities)
-- `parread.com` and `parclear.com` (DOS utilities)
+- `parread.com`, `parwrite.com`, and `parclear.com` (DOS utilities)
 
 ### Requirements
 
@@ -25,7 +25,7 @@ You can build specific targets:
 
 ```sh
 make linux   # Build only Linux programs (par-read, par-write)
-make dos     # Build only DOS programs (parread.com, parclear.com)
+make dos     # Build only DOS programs (parread.com, parwrite.com, parclear.com)
 ```
 
 The DOS assembly programs support different debug levels:
@@ -34,6 +34,10 @@ The DOS assembly programs support different debug levels:
 make parread.com DEBUG=0   # Minimal size (188 bytes, default)
 make parread.com DEBUG=1   # With error messages (287 bytes)
 make parread.com DEBUG=2   # Verbose debugging (571 bytes)
+
+make parwrite.com DEBUG=0  # Minimal size (default)
+make parwrite.com DEBUG=1  # With error messages
+make parwrite.com DEBUG=2  # Verbose debugging
 ```
 
 The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
@@ -65,19 +69,21 @@ The file will be written to `<output>`
 
 ### Usage on DOS
 
-There is an assembly language version that you can use for reading on DOS. It
-consists of two .COM programs, `parclear.com` and `parread.com`. They are
-optimized to be small so that you can load them via the `debug` utility if you
-have no other way of copying files to the DOS machine.
+There are assembly language versions that you can use for reading and writing on
+DOS. They consist of three .COM programs: `parclear.com`, `parread.com`, and
+`parwrite.com`. They are optimized to be small so that you can load them via the
+`debug` utility if you have no other way of copying files to the DOS machine.
 
-To use it, connect a LapLink cable between the Linux computer and the DOS
-machine. On the DOS computer, run 
+#### Receiving files on DOS
+
+Connect a LapLink cable between the Linux computer and the DOS machine. On the
+DOS computer, run
 
 ```cmd
 parclear
 ```
 
-After that, then, run `par-write` on the Linux computer. 
+After that, run `par-write` on the Linux computer.
 
 Finally, on the DOS computer you're copying to, run
 
@@ -86,3 +92,20 @@ parread
 ```
 
 The output will be placed in `C:\parread.out`.
+
+#### Sending files from DOS
+
+`parwrite.com` can send files from DOS, enabling DOS-to-DOS or DOS-to-Linux
+transfers without needing a Linux sender. On the DOS computer, run
+
+```cmd
+parwrite <file>
+```
+
+On the receiving end, run `par-read` on Linux or `parclear` followed by
+`parread` on another DOS machine.
+
+## Protocol
+
+See [PROTOCOL.md](PROTOCOL.md) for details on the wire protocol used for
+transfers.
