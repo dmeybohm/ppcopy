@@ -152,12 +152,12 @@ again:
 		;
 
 	printf("sending checksum: (%04x)\n", sum);
-	write_octet(sum & 0xff);
 	write_octet((sum >> 8) & 0xff);
+	write_octet(sum & 0xff);
 	
 	printf("sending size: (%5d)\n", size);
-	write_octet(size & 0xff);
 	write_octet((size >> 8) & 0xff);
+	write_octet(size & 0xff);
 
 	printf("sending data\n");
 	for (i = 0; i < size; i++) {

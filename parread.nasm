@@ -263,7 +263,7 @@ read_word:
 	call read_octet			; Big endian read here
 	mov ah,al			;   saves the xchg instruction.
 	call read_octet
-	xchg ah,al
+	;xchg ah,al
 	ret
 
 %if (DEBUG > 1)
