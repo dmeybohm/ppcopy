@@ -2,13 +2,10 @@
 #include <sys/io.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-/* Acknowledgement codes */
-#define START_ACK	0xb
 #define DATA_ACK	0x2
-
-#define START_MAGIC	0xd7
 
 #define BASEPORT	0x378
 #define DATAPORT	(BASEPORT+1)
@@ -85,25 +82,30 @@ int read_word(unsigned short *ret)
 
 int main(int argc, char *argv[])
 {
-	unsigned char *p, start;
+	unsigned char *p;
 	unsigned short checksum, size;
 	unsigned short sum, i;
 	FILE *fout;
-	int ret;
 
 	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
 
 	fout = stdout;
 
-	/* reset -- is this necessary? */
+	/* initialize port so writer sees a known state */
 	write_data(0x00, 0x10);
 
-	start = 0;
-	while (start != START_MAGIC && (ret = read_octet(START_ACK, &start)) != OK) {
-		if (ret == TIMEOUT) {
-			fprintf(stderr, "timed out reading start magic\n");
-		} else {
-			fprintf(stderr, "invalid start magic. read %x, expected %x\n", start, START_MAGIC);
+	/* scan for "ppcopy" start sequence using sliding window */
+	{
+		unsigned char buf[6] = {0};
+		unsigned char ch;
+
+		while (memcmp(buf, "ppcopy", 6) != 0) {
+			if (read_octet(DATA_ACK, &ch) == TIMEOUT) {
+				fprintf(stderr, "timed out scanning for start sequence\n");
+				continue;
+			}
+			memmove(buf, buf + 1, 5);
+			buf[5] = ch;
 		}
 	}
 

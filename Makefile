@@ -12,13 +12,13 @@ DEBUG ?= 0
 .PHONY: all linux dos clean
 
 # Default target - build everything
-all: par-read par-write parread.com parwrite.com parclear.com
+all: par-read par-write parread.com parwrite.com
 
 # Build only Linux programs
 linux: par-read par-write
 
 # Build only DOS programs
-dos: parread.com parwrite.com parclear.com
+dos: parread.com parwrite.com
 
 # Linux C programs
 par-read: par-read.o
@@ -40,9 +40,6 @@ parread.com: parread.nasm
 parwrite.com: parwrite.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
 
-parclear.com: parclear.nasm
-	$(AS) $(ASFLAGS) $< -o $@
-
 # Clean all build artifacts
 clean:
-	rm -f par-read par-read.o par-write par-write.o parread.com parwrite.com parclear.com
+	rm -f par-read par-read.o par-write par-write.o parread.com parwrite.com

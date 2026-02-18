@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#define START_MAGIC	0xd7
-
 #define BLOCK_SIZE	32768
 
 #define BASEPORT	0x378
@@ -144,8 +142,16 @@ int main(int argc, char *argv[])
 
 	write_data(0x00, 0x0);
 	begin = time(NULL);
-	while (!write_octet(START_MAGIC))
-		;
+
+	/* padding byte absorbs possible nibble desync if reader starts first */
+	write_octet(0x00);
+	/* start sequence — reader scans for "ppcopy" to self-synchronize */
+	write_octet('p');
+	write_octet('p');
+	write_octet('c');
+	write_octet('o');
+	write_octet('p');
+	write_octet('y');
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
 

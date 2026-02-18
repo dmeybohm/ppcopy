@@ -7,7 +7,6 @@
 %define DATA_PORT	(BASE_PORT+1)
 %define CONTROL_PORT	(BASE_PORT+2)
 
-%define START_MAGIC	0xd7
 %define BLOCK_SIZE	32768
 
 ;
@@ -167,11 +166,17 @@ start:
 	out dx,al
 	pop dx
 
-	; Send START_MAGIC (retry until acks match)
-send_start:
-	mov al,START_MAGIC
+	; Send padding byte (absorbs nibble desync if reader starts first)
+	xor al,al
 	call write_octet
-	jne send_start
+
+	; Send "ppcopy" start sequence
+	mov si,PTR(magic_str)
+	mov cx,6
+.send_magic:
+	lodsb
+	call write_octet
+	loop .send_magic
 
 send_loop:
 	; Read up to BLOCK_SIZE bytes from file
@@ -394,6 +399,8 @@ print_info:
 %endif ; (DEBUG > 0)
 
 ; String constants
+magic_str:		db 'ppcopy'
+
 sent_str:
 %if (DEBUG > 0)
 			db 'sent$'

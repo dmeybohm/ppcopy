@@ -56,33 +56,42 @@ Files are transferred in chunks of up to ~62 KB (must be less than 64 KB).
 Each chunk follows this structure:
 
 ```
-START_MAGIC (0xd7)     1 octet
-Size                   1 word (big-endian)
-Checksum               1 word (big-endian)
-Data                   `size` octets
+Start Sequence ("ppcopy")  6 octets
+Size                       1 word (big-endian)
+Checksum                   1 word (big-endian)
+Data                       `size` octets
 ```
 
 ### Fields
 
-- **START_MAGIC** (`0xd7`): Synchronization byte. The reader waits for this
-  value before proceeding.
+- **Start Sequence** (`"ppcopy"`): The writer sends a `0x00` padding byte
+  followed by the six ASCII bytes `ppcopy`. The padding byte absorbs a
+  possible nibble-level desync when the reader starts before the writer.
+  The reader scans incoming octets for the sequence `"ppcopy"` to
+  self-synchronize — no separate port-clearing utility is needed.
 - **Size**: Number of data bytes in this chunk (0 means end of file).
 - **Checksum**: Simple additive sum of all data bytes in the chunk
   (unsigned 16-bit, wrapping).
 - **Data**: The raw file contents for this chunk.
+
+### Reader Port Initialization
+
+Before scanning for the start sequence, the reader writes `0x10` to the
+data port (`BASE_PORT`). This ensures the writer sees a known initial
+state when it begins sending.
 
 ### Multi-Chunk Flow
 
 For files larger than one chunk:
 
 ```
-[START_MAGIC] [Size₁] [Checksum₁] [Data₁...]
-              [Size₂] [Checksum₂] [Data₂...]
-              ...
-              [0x0000]  <- size of zero signals EOF
+[ppcopy] [Size₁] [Checksum₁] [Data₁...]
+         [Size₂] [Checksum₂] [Data₂...]
+         ...
+         [0x0000]  <- size of zero signals EOF
 ```
 
-The start magic is only sent once at the beginning. Subsequent chunks
+The start sequence is only sent once at the beginning. Subsequent chunks
 follow immediately after the previous chunk's data. A size of zero
 indicates the transfer is complete.
 
@@ -92,14 +101,9 @@ The receiver computes its own additive sum of the received data bytes and
 compares it against the received checksum. On mismatch, the transfer is
 considered failed.
 
-### Acknowledgment Codes
+### Acknowledgment Code
 
-Two acknowledgment values are used by the reader:
-
-| Code          | Value | Used For             |
-|---------------|-------|----------------------|
-| `START_ACK`   | `0xB` | Acknowledging start  |
-| `DATA_ACK`    | `0x2` | Acknowledging data   |
-
-The writer uses the returned ack values to detect synchronization errors
-(mismatched low/high nibble acks trigger a warning).
+The reader acknowledges every nibble with `DATA_ACK` (`0x2`), including
+during the start sequence. The writer uses the returned ack values to
+detect synchronization errors (mismatched low/high nibble acks trigger a
+warning).
