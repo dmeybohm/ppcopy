@@ -1,5 +1,4 @@
 // vim: sw=8 ts=8 noet
-#include "ppcopy.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <setjmp.h>
@@ -7,6 +6,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+
+#include "ppcopy.h"
 
 #define BLOCK_SIZE	32768
 
