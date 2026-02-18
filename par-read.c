@@ -87,8 +87,8 @@ int main(int argc, char *argv[])
 {
 	unsigned char *p, start;
 	unsigned short checksum, size;
-	unsigned short sum = 0, i;
-	FILE * fout;
+	unsigned short sum, i;
+	FILE *fout;
 	int ret;
 
 	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
@@ -97,51 +97,61 @@ int main(int argc, char *argv[])
 
 	/* reset -- is this necessary? */
 	write_data(0x00, 0x10);
-again:
+
 	start = 0;
 	while (start != START_MAGIC && (ret = read_octet(START_ACK, &start)) != OK) {
 		if (ret == TIMEOUT) {
-			fprintf(stderr, "timed out reading start magic");
+			fprintf(stderr, "timed out reading start magic\n");
 		} else {
 			fprintf(stderr, "invalid start magic. read %x, expected %x\n", start, START_MAGIC);
 		}
 	}
 
-	if (read_word(&size) != OK) {
-		fprintf(stderr, "timed out reading size\n");
-		goto again;
-	}
-	fprintf(stderr, "size = (%05d)\n", size);
-
-	if (read_word(&checksum) != OK) {
-		fprintf(stderr, "timed out reading checksum\n");
-		goto again;
-	}
-	fprintf(stderr, "checksum = (%04x)\n", checksum);
-
-	p = malloc(size);
-	if (p == NULL) {
-		fprintf(stderr, "malloc: out of memory\n");
-		return 1;
-	}
-
-	fprintf(stderr, "Reading data\n");
-	for (i = 0; i < size; i++) {
-		fprintf(stderr, "%d\n", i);
-		if (read_octet(DATA_ACK, &p[i]) == TIMEOUT) {
-			/* print what data is available */
+	while (1) {
+		if (read_word(&size) != OK) {
+			fprintf(stderr, "timed out reading size\n");
 			break;
 		}
-		sum += p[i];
+		if (size == 0)
+			break;
+		fprintf(stderr, "size = (%05d)\n", size);
+
+		if (read_word(&checksum) != OK) {
+			fprintf(stderr, "timed out reading checksum\n");
+			break;
+		}
+		fprintf(stderr, "checksum = (%04x)\n", checksum);
+
+		p = malloc(size);
+		if (p == NULL) {
+			fprintf(stderr, "malloc: out of memory\n");
+			return 1;
+		}
+
+		fprintf(stderr, "Reading data\n");
+		sum = 0;
+		for (i = 0; i < size; i++) {
+			if (read_octet(DATA_ACK, &p[i]) == TIMEOUT) {
+				fprintf(stderr, "timed out reading data at byte %d\n", i);
+				break;
+			}
+			sum += p[i];
+		}
+
+		fwrite(p, sizeof(char), i, fout);
+		free(p);
+
+		if (i < size) {
+			fprintf(stderr, "incomplete block, stopping\n");
+			break;
+		}
+
+		if (sum != checksum) {
+			fprintf(stderr, "WARNING: checksum mismatch - expected %x, got %x\n",
+				checksum, sum);
+		}
 	}
 
-	fwrite(p, sizeof(char), i, fout);
 	fclose(fout);
-
-	if (sum != checksum) {
-		fprintf(stderr, "WARNING: checksum mismatch - expected %x, got %x\n", 
-			checksum, sum);
-	}
-
 	return 0;
 }

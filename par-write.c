@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#define END_MAGIC 	0xe0
-#define COMMIT_MAGIC	0x15
 #define START_MAGIC	0xd7
+
+#define BLOCK_SIZE	32768
 
 #define BASEPORT	0x378
 #define DATAPORT	(BASEPORT+1)
@@ -87,14 +87,15 @@ static int write_octet(unsigned char byte)
 
 static int num_hashes = -1;
 
-static void print_status(unsigned short i, unsigned short size)
+static void print_status(off_t sent, off_t total)
 {
-	int to_print = NR_HASHES;
+	int to_print, i;
 
-	to_print *= i;
-	to_print /= size;
+	if (total == 0)
+		return;
 
-	if (i == size-1)
+	to_print = (int)(sent * NR_HASHES / total);
+	if (sent == total)
 		to_print = NR_HASHES;
 	if (to_print <= num_hashes)
 		return;
@@ -115,7 +116,8 @@ int main(int argc, char *argv[])
 	time_t begin, end;
 	unsigned char *p;
 	struct stat statbuf;
-	unsigned short i, size, sum;
+	off_t total_size, remaining, sent;
+	unsigned short chunk_size, sum, i;
 
 	if (ioperm(BASEPORT, 8, 1)) { perror ("ioperm"); exit(1); }
 
@@ -133,50 +135,62 @@ int main(int argc, char *argv[])
 		perror("fstat");
 		exit(1);
 	}
-	size = statbuf.st_size;
-	p = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
+	total_size = statbuf.st_size;
+	p = mmap(0, total_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (p == MAP_FAILED) {
 		perror("mmap");
 		exit(1);
 	}
 
-	for (sum = i = 0; i < size; i++)
-		sum += p[i];
-
-	fprintf(stderr, "checksum = %04x\n", sum);
-	
-again:
 	write_data(0x00, 0x0);
 	begin = time(NULL);
 	while (!write_octet(START_MAGIC))
 		;
 
-	printf("sending size: (%5d)\n", size);
-	write_octet((size >> 8) & 0xff);
-	write_octet(size & 0xff);
+	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
 
-	printf("sending checksum: (%04x)\n", sum);
-	write_octet((sum >> 8) & 0xff);
-	write_octet(sum & 0xff);
+	remaining = total_size;
+	sent = 0;
+	while (remaining > 0) {
+		chunk_size = remaining > BLOCK_SIZE ? BLOCK_SIZE : (unsigned short) remaining;
 
-	printf("sending data\n");
-	for (i = 0; i < size; i++) {
-		print_status(i, size);
-		write_octet(p[i]);
+		/* compute checksum for this chunk */
+		sum = 0;
+		for (i = 0; i < chunk_size; i++)
+			sum += p[sent + i];
+
+		/* send size word (big-endian) */
+		write_octet((chunk_size >> 8) & 0xff);
+		write_octet(chunk_size & 0xff);
+
+		/* send checksum word (big-endian) */
+		write_octet((sum >> 8) & 0xff);
+		write_octet(sum & 0xff);
+
+		/* send data */
+		for (i = 0; i < chunk_size; i++) {
+			print_status(sent + i, total_size);
+			write_octet(p[sent + i]);
+		}
+
+		sent += chunk_size;
+		remaining -= chunk_size;
 	}
+
+	/* send terminator: size=0 */
+	write_octet(0x00);
+	write_octet(0x00);
+
+	print_status(total_size, total_size);
 	printf("\n");
-	if (!write_octet(END_MAGIC)) {
-		printf("error sending data, resending\n");
-		goto again;
-	}
 
 	end = time(NULL);
 	if (end > begin) {
-		fprintf(stderr, "%d bytes / %lu seconds = %lu bytes/second\n",
-			(unsigned) size, (unsigned long) end-begin,
-			((unsigned long) size) / ((unsigned long) end-begin));
+		fprintf(stderr, "%ld bytes / %lu seconds = %lu bytes/second\n",
+			(long) total_size, (unsigned long)(end - begin),
+			((unsigned long) total_size) / ((unsigned long)(end - begin)));
 	} else {
-		fprintf(stderr, "%d bytes in < 1 second\n", (unsigned) size);
+		fprintf(stderr, "%ld bytes in < 1 second\n", (long) total_size);
 	}
 	exit (0);
 }
