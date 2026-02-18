@@ -72,11 +72,11 @@ static int read_octet(unsigned int ack, unsigned char *ret)
 
 int read_word(unsigned short *ret)
 {
-	unsigned char low, high;
+	unsigned char high, low;
 
-	if (read_octet(DATA_ACK, &low) == TIMEOUT)
-		return TIMEOUT;
 	if (read_octet(DATA_ACK, &high) == TIMEOUT)
+		return TIMEOUT;
+	if (read_octet(DATA_ACK, &low) == TIMEOUT)
 		return TIMEOUT;
 
 	*ret = high << 8 | low;
