@@ -119,17 +119,17 @@ start_read:
 	mov di,PTR(block)		 ; where the data is stored
 	mov si,di
 
-recv_checksum:
-	call read_word
-	mov bp,ax			; store checksum in bp
-	DPRINT checksum_str
-
 recv_size:
-	DPRINT synch_str
 	call read_word
 	mov cx,ax			; remember to preserve size in cx
 	jcxz close_file
 	DPRINT size_str
+
+recv_checksum:
+	DPRINT synch_str
+	call read_word
+	mov bp,ax			; store checksum in bp
+	DPRINT checksum_str
 
 recv_data:
 	PRINT_INFO reading_data_str 

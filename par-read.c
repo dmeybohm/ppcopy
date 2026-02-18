@@ -107,17 +107,17 @@ again:
 		}
 	}
 
-	if (read_word(&checksum) != OK) {
-		fprintf(stderr, "timed out reading checksum\n");
-		goto again;
-	}
-	fprintf(stderr, "checksum = (%04x)\n", checksum);
-
 	if (read_word(&size) != OK) {
 		fprintf(stderr, "timed out reading size\n");
 		goto again;
 	}
 	fprintf(stderr, "size = (%05d)\n", size);
+
+	if (read_word(&checksum) != OK) {
+		fprintf(stderr, "timed out reading checksum\n");
+		goto again;
+	}
+	fprintf(stderr, "checksum = (%04x)\n", checksum);
 
 	p = malloc(size);
 	if (p == NULL) {
