@@ -52,33 +52,40 @@ The receiver reconstructs the word: `(high_byte << 8) | low_byte`.
 
 ## File Transfer Protocol
 
-Files are transferred in chunks of up to ~62 KB (must be less than 64 KB).
-Each chunk follows this structure:
+A transfer begins with a one-time start sequence, followed by one or
+more data chunks, and is terminated by a size word of zero:
 
 ```
-Start Sequence ("ppcopy")  6 octets
-Size                       1 word (big-endian)
-Checksum                   1 word (big-endian)
-Data                       `size` octets
+[Padding] [Start Sequence] [Chunk₁] [Chunk₂] ... [0x0000]
 ```
 
-### Fields
+### Start Sequence
 
-- **Start Sequence** (`"ppcopy"`): The writer sends a `0x00` padding byte
-  followed by the six ASCII bytes `ppcopy`. The padding byte absorbs a
-  possible nibble-level desync when the reader starts before the writer.
-  The reader scans incoming octets for the sequence `"ppcopy"` to
-  self-synchronize — no separate port-clearing utility is needed.
-- **Size**: Number of data bytes in this chunk (0 means end of file).
-- **Checksum**: Simple additive sum of all data bytes in the chunk
-  (unsigned 16-bit, wrapping).
-- **Data**: The raw file contents for this chunk.
+The writer sends a `0x00` padding byte followed by the six ASCII bytes
+`ppcopy`. The padding byte absorbs a possible nibble-level desync when
+the reader starts before the writer. The reader scans incoming octets
+for the sequence `"ppcopy"` to self-synchronize.
 
 ### Reader Port Initialization
 
 Before scanning for the start sequence, the reader writes `0x10` to the
 data port (`BASE_PORT`). This ensures the writer sees a known initial
 state when it begins sending.
+
+### Chunk Structure
+
+Each chunk carries up to ~62 KB of data (must be less than 64 KB):
+
+```
+Size                       1 word (big-endian)
+Checksum                   1 word (big-endian)
+Data                       `size` octets
+```
+
+- **Size**: Number of data bytes in this chunk (0 means end of file).
+- **Checksum**: Simple additive sum of all data bytes in the chunk
+  (unsigned 16-bit, wrapping).
+- **Data**: The raw file contents for this chunk.
 
 ### Multi-Chunk Flow
 
