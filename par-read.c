@@ -1,40 +1,10 @@
 // vim: sw=8 ts=8 noet
-#include <sys/io.h>
+#include "ppcopy.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #define DATA_ACK	0x2
-
-#define BASEPORT	0x378
-#define DATAPORT	(BASEPORT+1)
-
-#define DELAY           1
-
-static void write_data(unsigned char data, unsigned int clock)
-{
-	data &= 0x0f;
-	outb (data | clock, BASEPORT);
-}
-
-static unsigned char read_noack(unsigned char clock)
-{
-	unsigned char c0, c1;
-
-	while (1) {
-		c0 = inb (DATAPORT) >> 3;
-		usleep(DELAY);
-		if ((c0 & 0x10) ^ clock)  {
-			c1 = inb (DATAPORT) >> 3;
-			if (c0 == c1)
-				break;
-		}
-	}
-
-	fprintf(stderr, "read_status(clock=%x,data=%x)\n", clock, c0);
-	return (c0 & 0x0f);
-}
 
 static unsigned char read_status(unsigned char clock, unsigned char ack)
 {

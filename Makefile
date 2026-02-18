@@ -20,17 +20,21 @@ linux: par-read par-write
 # Build only DOS programs
 dos: parread.com parwrite.com
 
-# Linux C programs
-par-read: par-read.o
-	$(CC) $(CFLAGS) -o $@ $^
-
-par-read.o: par-read.c
+# Shared library
+ppcopy.o: ppcopy.c ppcopy.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-par-write: par-write.o
+# Linux C programs
+par-read: par-read.o ppcopy.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-par-write.o: par-write.c
+par-read.o: par-read.c ppcopy.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+par-write: par-write.o ppcopy.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+par-write.o: par-write.c ppcopy.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # DOS assembly programs
@@ -42,4 +46,4 @@ parwrite.com: parwrite.nasm
 
 # Clean all build artifacts
 clean:
-	rm -f par-read par-read.o par-write par-write.o parread.com parwrite.com
+	rm -f par-read par-read.o par-write par-write.o ppcopy.o parread.com parwrite.com

@@ -1,48 +1,20 @@
 // vim: sw=8 ts=8 noet
+#include "ppcopy.h"
 #include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <setjmp.h>
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include <sys/io.h>
 
 #define BLOCK_SIZE	32768
-
-#define BASEPORT	0x378
-#define DATAPORT	(BASEPORT+1)
-
-#define DELAY 		1
 
 static void print_current(void)
 {
 #if 0
 	fprintf(stderr, "status(in=%x)\n", inb(DATAPORT)>>3);
 #endif
-}
-
-static void write_data(unsigned char data, unsigned int clock)
-{
-	data &= 0x0f;
-	outb (data | clock, BASEPORT);
-}
-
-static unsigned char read_noack(unsigned char clock)
-{
-	unsigned char c0, c1;
-
-	while (1) {
-		c0 = inb (DATAPORT) >> 3;
-		usleep(DELAY);
-		if ((c0 & 0x10) ^ clock)  {
-			c1 = inb (DATAPORT) >> 3;
-			if (c0 == c1)
-				break;
-		}
-	}
-	return (c0 & 0x0f);
 }
 
 static unsigned char write_ackd(unsigned char data, unsigned char clock)
