@@ -26,7 +26,7 @@ static void print_current(void)
 static void write_data(unsigned char data, unsigned int clock)
 {
 	data &= 0x0f;
-    outb (data | clock, BASEPORT);
+	outb (data | clock, BASEPORT);
 }
 
 static unsigned char read_noack(unsigned char clock)
@@ -42,26 +42,16 @@ static unsigned char read_noack(unsigned char clock)
 				break;
 		}
 	}
-#if 0
-	fprintf(stderr, "read_status(clock=%x,data=%x)\n", clock, c0);
-#endif
 	return (c0 & 0x0f);
 }
 
-unsigned char write_ackd(unsigned char data, unsigned char clock)
+static unsigned char write_ackd(unsigned char data, unsigned char clock)
 {
 	unsigned char ack;
 
 	write_data(data, clock);
 	ack = read_noack(clock);
 	return ack;
-}
-
-unsigned char read_status(unsigned char clock, unsigned char ack)
-{
-	unsigned char res = read_noack(clock);
-	write_data(ack, clock);
-	return res;
 }
 
 static int write_octet(unsigned char byte)
