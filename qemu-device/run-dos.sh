@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 CDROM="$SCRIPT_DIR/images/FD14LIVE.iso"
-FLOPPY="$SCRIPT_DIR/images/ppcopy.img"
+FLOPPY=""
 SIDE=0
 STATEFILE="/tmp/laplink.state"
 MEMORY=32
@@ -16,7 +16,7 @@ usage() {
     echo
     echo "Options:"
     echo "  -c <cdrom>      CD-ROM ISO (default: images/FD14LIVE.iso)"
-    echo "  -f <floppy>     Floppy image (default: images/ppcopy.img)"
+    echo "  -f <floppy>     Floppy image (default: ppcopy-dos.img or ppcopy-dos2.img based on side)"
     echo "  -s <side>       LapLink cable side, 0 or 1 (default: 0)"
     echo "  -S <statefile>  Shared state file path (default: /tmp/laplink.state)"
     echo "  -m <memory>     RAM in MB (default: 32)"
@@ -35,6 +35,14 @@ while getopts "c:f:s:S:m:h" opt; do
     esac
 done
 
+if [ -z "$FLOPPY" ]; then
+    if [ "$SIDE" -eq 0 ]; then
+        FLOPPY="$SCRIPT_DIR/images/ppcopy-dos.img"
+    else
+        FLOPPY="$SCRIPT_DIR/images/ppcopy-dos2.img"
+    fi
+fi
+
 if [ ! -f "$STATEFILE" ]; then
     truncate -s 2 "$STATEFILE"
 fi
@@ -45,4 +53,4 @@ fi
     -cdrom "$CDROM" \
     -fda "$FLOPPY" \
     -parallel none \
-    -device isa-laplink,side="$SIDE",statefile="$STATEFILE"
+    -device isa-laplink,side="$SIDE",file="$STATEFILE"

@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 CDROM="$SCRIPT_DIR/images/alpine-virt-3.23.3-x86.iso"
-DISK="$SCRIPT_DIR/images/ppcopy-linux.img"
+FLOPPY=""
 SIDE=1
 STATEFILE="/tmp/laplink.state"
 MEMORY=128
@@ -16,17 +16,17 @@ usage() {
     echo
     echo "Options:"
     echo "  -c <cdrom>      CD-ROM ISO (default: images/alpine-virt-3.23.3-x86.iso)"
-    echo "  -d <disk>       Extra FAT disk image (default: images/ppcopy-linux.img)"
+    echo "  -f <floppy>     Floppy image (default: ppcopy-linux.img or ppcopy-linux2.img based on side)"
     echo "  -s <side>       LapLink cable side, 0 or 1 (default: 1)"
     echo "  -S <statefile>  Shared state file path (default: /tmp/laplink.state)"
     echo "  -m <memory>     RAM in MB (default: 128)"
     echo "  -h              Show this help"
 }
 
-while getopts "c:d:s:S:m:h" opt; do
+while getopts "c:f:s:S:m:h" opt; do
     case "$opt" in
         c) CDROM="$OPTARG" ;;
-        d) DISK="$OPTARG" ;;
+        f) FLOPPY="$OPTARG" ;;
         s) SIDE="$OPTARG" ;;
         S) STATEFILE="$OPTARG" ;;
         m) MEMORY="$OPTARG" ;;
@@ -34,6 +34,14 @@ while getopts "c:d:s:S:m:h" opt; do
         *) usage; exit 1 ;;
     esac
 done
+
+if [ -z "$FLOPPY" ]; then
+    if [ "$SIDE" -eq 0 ]; then
+        FLOPPY="$SCRIPT_DIR/images/ppcopy-linux.img"
+    else
+        FLOPPY="$SCRIPT_DIR/images/ppcopy-linux2.img"
+    fi
+fi
 
 if [ ! -f "$STATEFILE" ]; then
     truncate -s 2 "$STATEFILE"
@@ -43,6 +51,6 @@ fi
     -m "$MEMORY" \
     -boot d \
     -cdrom "$CDROM" \
-    -drive file="$DISK",format=raw,if=ide \
+    -fda "$FLOPPY" \
     -parallel none \
-    -device isa-laplink,side="$SIDE",statefile="$STATEFILE"
+    -device isa-laplink,side="$SIDE",file="$STATEFILE"
