@@ -34,7 +34,7 @@ static unsigned short read_word(void)
 	return high << 8 | low;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	unsigned char *p;
 	unsigned short checksum, size;

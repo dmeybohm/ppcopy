@@ -1,7 +1,6 @@
 // vim: sw=8 ts=8 noet
 #include <fcntl.h>
 #include <stdio.h>
-#include <setjmp.h>
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -11,31 +10,20 @@
 
 #define BLOCK_SIZE	32768
 
-static void print_current(void)
-{
-#if 0
-	fprintf(stderr, "status(in=%x)\n", inb(DATAPORT)>>3);
-#endif
-}
-
 static unsigned char write_ackd(unsigned char data, unsigned char clock)
 {
-	unsigned char ack;
-
 	write_data(data, clock);
-	ack = read_noack(clock);
-	return ack;
+	return read_noack(clock);
 }
 
 static int write_octet(unsigned char byte)
 {
 	unsigned char byte_low, byte_high;
 	unsigned char ack_low, ack_high;
-		
-	byte_low = byte & 0x0f;
-	byte_high = (byte >> 4) & 0x0f;	
 
-	print_current();
+	byte_low = byte & 0x0f;
+	byte_high = (byte >> 4) & 0x0f;
+
 	ack_low = write_ackd(byte_low, 0x00);
 	ack_high = write_ackd(byte_high, 0x10);
 	if (ack_low != ack_high) 
@@ -80,7 +68,7 @@ int main(int argc, char *argv[])
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;
 
-	if (ioperm(BASEPORT, 8, 1)) { perror ("ioperm"); exit(1); }
+	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
 
 	if (argc != 2) {
 		fprintf(stderr, "usage: par-write <file>\n");
@@ -107,14 +95,10 @@ int main(int argc, char *argv[])
 	begin = time(NULL);
 
 	/* padding byte absorbs possible nibble desync if reader starts first */
-	write_octet(0x00);
 	/* start sequence — reader scans for "ppcopy" to self-synchronize */
-	write_octet('p');
-	write_octet('p');
-	write_octet('c');
-	write_octet('o');
-	write_octet('p');
-	write_octet('y');
+	const char *start_seq = "\0ppcopy";
+	for (int j = 0; j < 7; j++)
+		write_octet(start_seq[j]);
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
 
@@ -161,5 +145,5 @@ int main(int argc, char *argv[])
 	} else {
 		fprintf(stderr, "%ld bytes in < 1 second\n", (long) total_size);
 	}
-	exit (0);
+	return 0;
 }
