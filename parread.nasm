@@ -9,7 +9,6 @@
 %define OUTPUT_FILE	'C:\parread.out'
 
 %define DATA_ACK	0x2
-%define START_MAGIC	0xd7
 
 ;
 ; Turn these off for smaller code,
@@ -111,9 +110,26 @@ start:
 	mov bx,ax			; Store file-ptr in bx
 	cld
 
+	; Initialize port so writer sees a known state
+	mov dx,BASE_PORT
+	mov al,0x10
+	out dx,al
+
+	; Scan for "ppcopy" start sequence using sliding window
+.scan_magic:
 	call read_octet
-	cmp al,START_MAGIC
-	DIE_IF ne,SYM(no_synch_str)
+	; Shift magic_buf left by 1 and append new byte
+	mov di,PTR(magic_buf)
+	mov si,PTR(magic_buf+1)
+	mov cx,5
+	rep movsb
+	stosb			; magic_buf[5] = al
+	; Compare against "ppcopy"
+	mov si,PTR(magic_buf)
+	mov di,PTR(magic_str)
+	mov cx,6
+	repe cmpsb
+	jne .scan_magic
 
 start_read:
 	mov di,PTR(block)		 ; where the data is stored
@@ -371,7 +387,6 @@ output_file:		db OUTPUT_FILE,0
 %if (DEBUG > 0)
 ; Strings printed by DIE_IF
 open_err_str:		db 'open','$'
-no_synch_str:		db 'no synch','$'
 reading_data_str:	db 'reading','$'
 checksum_err_str:	db 'bad checksum','$'
 write_err_str:		db 'write','$'
@@ -392,6 +407,9 @@ not_restarting_str:	db 'not restarting read loop','$'
 
 %endif; (DEBUG > 0)
 
+
+magic_str:		db 'ppcopy'
+magic_buf:		db 0,0,0,0,0,0
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety
 block:			resw 1 ; expands to fill rest of 64k block

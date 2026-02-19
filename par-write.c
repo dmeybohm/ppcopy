@@ -1,80 +1,29 @@
 // vim: sw=8 ts=8 noet
 #include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <setjmp.h>
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include <sys/io.h>
 
-#define START_MAGIC	0xd7
+#include "ppcopy.h"
 
 #define BLOCK_SIZE	32768
 
-#define BASEPORT	0x378
-#define DATAPORT	(BASEPORT+1)
-
-#define DELAY 		1
-
-static void print_current(void)
+static unsigned char write_ackd(unsigned char data, unsigned char clock)
 {
-#if 0
-	fprintf(stderr, "status(in=%x)\n", inb(DATAPORT)>>3);
-#endif
-}
-
-static void write_data(unsigned char data, unsigned int clock)
-{
-	data &= 0x0f;
-    outb (data | clock, BASEPORT);
-}
-
-static unsigned char read_noack(unsigned char clock)
-{
-	unsigned char c0, c1;
-
-	while (1) {
-		c0 = inb (DATAPORT) >> 3;
-		usleep(DELAY);
-		if ((c0 & 0x10) ^ clock)  {
-			c1 = inb (DATAPORT) >> 3;
-			if (c0 == c1)
-				break;
-		}
-	}
-#if 0
-	fprintf(stderr, "read_status(clock=%x,data=%x)\n", clock, c0);
-#endif
-	return (c0 & 0x0f);
-}
-
-unsigned char write_ackd(unsigned char data, unsigned char clock)
-{
-	unsigned char ack;
-
 	write_data(data, clock);
-	ack = read_noack(clock);
-	return ack;
-}
-
-unsigned char read_status(unsigned char clock, unsigned char ack)
-{
-	unsigned char res = read_noack(clock);
-	write_data(ack, clock);
-	return res;
+	return read_noack(clock);
 }
 
 static int write_octet(unsigned char byte)
 {
 	unsigned char byte_low, byte_high;
 	unsigned char ack_low, ack_high;
-		
-	byte_low = byte & 0x0f;
-	byte_high = (byte >> 4) & 0x0f;	
 
-	print_current();
+	byte_low = byte & 0x0f;
+	byte_high = (byte >> 4) & 0x0f;
+
 	ack_low = write_ackd(byte_low, 0x00);
 	ack_high = write_ackd(byte_high, 0x10);
 	if (ack_low != ack_high) 
@@ -119,7 +68,7 @@ int main(int argc, char *argv[])
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;
 
-	if (ioperm(BASEPORT, 8, 1)) { perror ("ioperm"); exit(1); }
+	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
 
 	if (argc != 2) {
 		fprintf(stderr, "usage: par-write <file>\n");
@@ -144,8 +93,12 @@ int main(int argc, char *argv[])
 
 	write_data(0x00, 0x0);
 	begin = time(NULL);
-	while (!write_octet(START_MAGIC))
-		;
+
+	/* padding byte absorbs possible nibble desync if reader starts first */
+	/* start sequence — reader scans for "ppcopy" to self-synchronize */
+	const char *start_seq = "\0ppcopy";
+	for (int j = 0; j < 7; j++)
+		write_octet(start_seq[j]);
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
 
@@ -192,5 +145,5 @@ int main(int argc, char *argv[])
 	} else {
 		fprintf(stderr, "%ld bytes in < 1 second\n", (long) total_size);
 	}
-	exit (0);
+	return 0;
 }

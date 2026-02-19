@@ -1,6 +1,7 @@
 # ppcopy
 
-Copy files over the parallel port using Linux and DOS.
+Copy files over the parallel port using Linux and DOS and a 
+[LapLink cable](http://www.nullmodem.com/LapLink.htm).
 
 ## Building
 
@@ -10,9 +11,9 @@ To build everything (both Linux and DOS utilities), type:
 make
 ```
 
-This builds all five programs:
+This builds all four programs:
 - `par-read` and `par-write` (Linux utilities)
-- `parread.com`, `parwrite.com`, and `parclear.com` (DOS utilities)
+- `parread.com` and `parwrite.com` (DOS utilities)
 
 ### Requirements
 
@@ -25,7 +26,7 @@ You can build specific targets:
 
 ```sh
 make linux   # Build only Linux programs (par-read, par-write)
-make dos     # Build only DOS programs (parread.com, parwrite.com, parclear.com)
+make dos     # Build only DOS programs (parread.com, parwrite.com)
 ```
 
 The DOS assembly programs support different debug levels:
@@ -70,24 +71,16 @@ The file will be written to `<output>`
 ### Usage on DOS
 
 There are assembly language versions that you can use for reading and writing on
-DOS. They consist of three .COM programs: `parclear.com`, `parread.com`, and
-`parwrite.com`. They are optimized to be small so that you can load them via the
-`debug` utility if you have no other way of copying files to the DOS machine.
+DOS. They consist of two .COM programs: `parread.com` and `parwrite.com`. They
+are optimized to be small so that you can load them via the `debug` utility if
+you have no other way of copying files to the DOS machine.
 
 #### Receiving files on DOS
 
-Connect a LapLink cable between the Linux computer and the DOS machine. On the
-DOS computer, run
+Connect a LapLink cable between the Linux computer and the DOS machine. Run
+`par-write` on the Linux computer, and on the DOS computer run
 
 ```cmd
-parclear
-```
-
-After that, run `par-write` on the Linux computer.
-
-Finally, on the DOS computer you're copying to, run
-
-```
 parread
 ```
 
@@ -102,8 +95,8 @@ transfers without needing a Linux sender. On the DOS computer, run
 parwrite <file>
 ```
 
-On the receiving end, run `par-read` on Linux or `parclear` followed by
-`parread` on another DOS machine.
+On the receiving end, run `par-read` on Linux or `parread` on another DOS
+machine.
 
 ## Protocol
 
