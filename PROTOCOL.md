@@ -122,6 +122,3 @@ The reader uses two acknowledgment values depending on the transfer phase:
 The writer validates that acks match the expected phase. A mismatch
 (e.g. `META_ACK` received during data transfer) indicates the two
 sides are out of sync, and the writer exits with an error.
-
-During the start sequence itself, the writer does not validate the ACK
-value, since the reader may still be scanning.

@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	/* start sequence — reader scans for "ppcopy" to self-synchronize */
 	const char *start_seq = "\0ppcopy";
 	for (int j = 0; j < 7; j++)
-		write_octet(start_seq[j], 0);
+		write_octet(start_seq[j], META_ACK);
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
 

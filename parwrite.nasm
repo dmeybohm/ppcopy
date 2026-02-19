@@ -169,8 +169,8 @@ start:
 	out dx,al
 	pop dx
 
-	; Send padding byte + start sequence (don't validate ACK)
-	mov byte [expected_ack], 0
+	; Send padding byte + start sequence
+	mov byte [expected_ack], META_ACK
 	xor al,al
 	call write_octet
 
@@ -181,9 +181,6 @@ start:
 	lodsb
 	call write_octet
 	loop .send_magic
-
-	; After start sequence, expect META_ACK for size/checksum
-	mov byte [expected_ack], META_ACK
 
 send_loop:
 	; Read up to BLOCK_SIZE bytes from file
