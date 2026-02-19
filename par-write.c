@@ -1,8 +1,6 @@
 // vim: sw=8 ts=8 noet
-#include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 
@@ -63,9 +61,9 @@ static void print_status(off_t sent, off_t total)
 
 int main(int argc, char *argv[])
 {
-	int fd;
+	FILE *fp;
 	time_t begin, end;
-	unsigned char *p;
+	unsigned char buf[BLOCK_SIZE];
 	struct stat statbuf;
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;
@@ -77,21 +75,16 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	fd = open(argv[1], O_RDONLY);
-	if (fd < 0) {
-		perror("open");
+	fp = fopen(argv[1], "rb");
+	if (fp == NULL) {
+		perror("fopen");
 		exit(1);
 	}
-	if (fstat(fd, &statbuf) < 0) {
+	if (fstat(fileno(fp), &statbuf) < 0) {
 		perror("fstat");
 		exit(1);
 	}
 	total_size = statbuf.st_size;
-	p = mmap(0, total_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (p == MAP_FAILED) {
-		perror("mmap");
-		exit(1);
-	}
 
 	begin = time(NULL);
 
@@ -111,10 +104,16 @@ int main(int argc, char *argv[])
 	while (remaining > 0) {
 		chunk_size = remaining > BLOCK_SIZE ? BLOCK_SIZE : (unsigned short) remaining;
 
+		/* read one chunk into buf */
+		if (fread(buf, 1, chunk_size, fp) != chunk_size) {
+			perror("fread");
+			exit(1);
+		}
+
 		/* compute checksum for this chunk */
 		sum = 0;
 		for (i = 0; i < chunk_size; i++)
-			sum += p[sent + i];
+			sum += buf[i];
 
 		/* send size word (big-endian) */
 		write_octet((chunk_size >> 8) & 0xff, META_ACK);
@@ -127,7 +126,7 @@ int main(int argc, char *argv[])
 		/* send data */
 		for (i = 0; i < chunk_size; i++) {
 			print_status(sent + i, total_size);
-			write_octet(p[sent + i], DATA_ACK);
+			write_octet(buf[i], DATA_ACK);
 		}
 
 		sent += chunk_size;

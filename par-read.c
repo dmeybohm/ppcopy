@@ -78,7 +78,7 @@ int main(void)
 			sum += p[i];
 		}
 
-		fwrite(p, sizeof(char), size, fout);
+		fwrite(p, 1, size, fout);
 		free(p);
 
 		if (sum != checksum) {
