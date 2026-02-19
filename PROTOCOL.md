@@ -1,6 +1,7 @@
 # Wire Protocol
 
-ppcopy transfers files over a parallel port using a LapLink cable. The
+ppcopy transfers files over a parallel port using a [LapLink
+cable](http://www.nullmodem.com/LapLink.htm). The
 protocol is defined by `parread.nasm` as the source of truth; the C
 implementations (`par-write.c`, `par-read.c`) follow it.
 
