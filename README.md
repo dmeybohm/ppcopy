@@ -1,6 +1,7 @@
 # ppcopy
 
-Copy files over the parallel port using Linux and DOS.
+Copy files over the parallel port using Linux and DOS and a 
+[LapLink cable](http://www.nullmodem.com/LapLink.htm).
 
 ## Building
 
