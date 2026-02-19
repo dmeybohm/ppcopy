@@ -99,6 +99,13 @@ parwrite <file>
 On the receiving end, run `par-read` on Linux or `parread` on another DOS
 machine.
 
+## QEMU Device
+
+A QEMU device that emulates a LapLink cable connection between two VMs is
+included in the `qemu-device/` directory. See
+[qemu-device/README.md](qemu-device/README.md) for integration and usage
+instructions.
+
 ## Protocol
 
 See [PROTOCOL.md](PROTOCOL.md) for details on the wire protocol used for
