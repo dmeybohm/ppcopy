@@ -123,13 +123,13 @@ recv_size:
 	call read_word
 	mov cx,ax			; remember to preserve size in cx
 	jcxz close_file
-	DPRINT size_str 
+	DPRINT size_str
 
 recv_checksum:
-	DPRINT synch_str 
+	DPRINT synch_str
 	call read_word
 	mov bp,ax			; store checksum in bp
-	DPRINT checksum_str 
+	DPRINT checksum_str
 
 recv_data:
 	PRINT_INFO reading_data_str 
