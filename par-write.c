@@ -16,7 +16,7 @@ static unsigned char write_ackd(unsigned char data, unsigned char clock)
 	return read_noack(clock);
 }
 
-static int write_octet(unsigned char byte, unsigned char expected_ack)
+static void write_octet(unsigned char byte, unsigned char expected_ack)
 {
 	unsigned char byte_low, byte_high;
 	unsigned char ack_low, ack_high;
@@ -26,16 +26,12 @@ static int write_octet(unsigned char byte, unsigned char expected_ack)
 
 	ack_low = write_ackd(byte_low, 0x00);
 	ack_high = write_ackd(byte_high, 0x10);
-	if (ack_low != ack_high)
-		fprintf(stderr, "write_octet: Warning: ack_low (%x)!= ack_high"
-				" (%x)\n", ack_low, ack_high);
 	if (expected_ack && (ack_low != expected_ack || ack_high != expected_ack)) {
 		fprintf(stderr, "error: expected %s but received %s\n",
 			expected_ack == DATA_ACK ? "DATA_ACK" : "META_ACK",
 			ack_low == DATA_ACK ? "DATA_ACK" : "META_ACK");
 		exit(1);
 	}
-	return (ack_low == ack_high);
 }
 
 #define NR_HASHES 40
@@ -97,13 +93,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	write_data(0x00, 0x0);
 	begin = time(NULL);
 
-	/* padding byte absorbs possible nibble desync if reader starts first */
+	/* padding byte absorbs possible nibble desync if reader starts first;
+	 * sent without ack validation because the reader may not have started */
+	write_octet(0x00, 0);
+
 	/* start sequence — reader scans for "ppcopy" to self-synchronize */
-	const char *start_seq = "\0ppcopy";
-	for (int j = 0; j < 7; j++)
+	const char *start_seq = "ppcopy";
+	for (int j = 0; j < 6; j++)
 		write_octet(start_seq[j], META_ACK);
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);

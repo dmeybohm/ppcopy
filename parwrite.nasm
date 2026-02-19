@@ -169,12 +169,13 @@ start:
 	out dx,al
 	pop dx
 
-	; Send padding byte + start sequence
-	mov byte [expected_ack], META_ACK
+	; Send padding byte without ack validation (reader may not have started)
+	mov byte [expected_ack], 0
 	xor al,al
 	call write_octet
 
 	; Send "ppcopy" start sequence
+	mov byte [expected_ack], META_ACK
 	mov si,PTR(magic_str)
 	mov cx,6
 .send_magic:
