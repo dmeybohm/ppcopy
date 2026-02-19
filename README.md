@@ -25,8 +25,9 @@ This builds all four programs:
 You can build specific targets:
 
 ```sh
-make linux   # Build only Linux programs (par-read, par-write)
-make dos     # Build only DOS programs (parread.com, parwrite.com)
+make linux       # Build only Linux programs (par-read, par-write)
+make linux-i386  # Build 32-bit statically linked Linux programs (par-read-i386, par-write-i386)
+make dos         # Build only DOS programs (parread.com, parwrite.com)
 ```
 
 The DOS assembly programs support different debug levels:
