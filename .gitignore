@@ -13,6 +13,9 @@ par-write
 *~
 .*.swp
 
+# QEMU disk images
+qemu-device/images/
+
 # macOS
 .DS_Store
 
