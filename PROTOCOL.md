@@ -27,8 +27,9 @@ Each nibble transfer follows this sequence:
 2. **Reader** polls the status port (shifted right by 3), watching bit 4
    (the clock bit, derived from the status port's bit 7) for a toggle.
    It reads twice to confirm a stable value.
-3. **Reader** sends an acknowledgment nibble (`DATA_ACK = 0x2`) back on the
-   data port.
+3. **Reader** sends an acknowledgment nibble back on the data port. The
+   acknowledgment value depends on the current transfer phase (see
+   Acknowledgment Codes below).
 
 The clock alternates between `0x00` and `0x10` (writer side) for
 successive nibbles.
@@ -109,9 +110,18 @@ The receiver computes its own additive sum of the received data bytes and
 compares it against the received checksum. On mismatch, the transfer is
 considered failed.
 
-### Acknowledgment Code
+### Acknowledgment Codes
 
-The reader acknowledges every nibble with `DATA_ACK` (`0x2`), including
-during the start sequence. The writer uses the returned ack values to
-detect synchronization errors (mismatched low/high nibble acks trigger a
-warning).
+The reader uses two acknowledgment values depending on the transfer phase:
+
+| ACK Value | Name       | Used During                              |
+|-----------|------------|------------------------------------------|
+| `0x1`     | `META_ACK` | Sync scanning, size words, checksum words |
+| `0x2`     | `DATA_ACK` | Data block bytes                          |
+
+The writer validates that acks match the expected phase. A mismatch
+(e.g. `META_ACK` received during data transfer) indicates the two
+sides are out of sync, and the writer exits with an error.
+
+During the start sequence itself, the writer does not validate the ACK
+value, since the reader may still be scanning.

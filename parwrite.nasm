@@ -7,6 +7,9 @@
 %define DATA_PORT	(BASE_PORT+1)
 %define CONTROL_PORT	(BASE_PORT+2)
 
+%define META_ACK	0x1
+%define DATA_ACK	0x2
+
 %define BLOCK_SIZE	32768
 
 ;
@@ -166,7 +169,8 @@ start:
 	out dx,al
 	pop dx
 
-	; Send padding byte (absorbs nibble desync if reader starts first)
+	; Send padding byte + start sequence (don't validate ACK)
+	mov byte [expected_ack], 0
 	xor al,al
 	call write_octet
 
@@ -177,6 +181,9 @@ start:
 	lodsb
 	call write_octet
 	loop .send_magic
+
+	; After start sequence, expect META_ACK for size/checksum
+	mov byte [expected_ack], META_ACK
 
 send_loop:
 	; Read up to BLOCK_SIZE bytes from file
@@ -214,12 +221,15 @@ send_loop:
 
 	; Send data bytes
 	DPRINT sending_data_str
+	mov byte [expected_ack], DATA_ACK
 	mov si,PTR(block)
 .send_data:
 	lodsb
 	call write_octet
 	loop .send_data
 
+	; Back to META_ACK for next chunk's size/checksum
+	mov byte [expected_ack], META_ACK
 	pop cx			; restore bytes_read
 	cmp cx,BLOCK_SIZE
 	je send_loop		; full block, more data to read
@@ -286,9 +296,26 @@ write_octet:
 	mov dl,0x10		; clock = 0x10
 	call write_ackd		; AL = ack_high
 	cmp al,ch		; compare acks (sets ZF)
+	; Check ACK type if expected_ack is set
+	cmp byte [expected_ack], 0
+	je .skip_ack_check
+	cmp ch, byte [expected_ack]
+	jne .ack_error
+	cmp al, byte [expected_ack]
+	jne .ack_error
+.skip_ack_check:
 	pop cx
 	pop dx
 	ret
+.ack_error:
+	pop cx
+	pop dx
+	mov dx, PTR(ack_err_str)
+	mov ah, 0x09
+	int 0x21
+	mov ah, 0x4c
+	mov al, 1
+	int 0x21
 
 ; write_word: send 16-bit value big-endian (high byte first)
 ; Input: AX = word
@@ -422,6 +449,9 @@ sending_data_str:	db 'sending data$'
 
 %endif ; (DEBUG > 0)
 
+
+expected_ack:		db 0
+ack_err_str:		db 'error: unexpected ACK type',13,10,'$'
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety
 block:			resw 1 ; expands to fill rest of 64k block
