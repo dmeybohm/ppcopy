@@ -8,6 +8,7 @@
 %define CONTROL_PORT	(BASE_PORT+2)
 %define OUTPUT_FILE	'C:\parread.out'
 
+%define META_ACK	0x1
 %define DATA_ACK	0x2
 
 ;
@@ -131,6 +132,8 @@ start:
 	repe cmpsb
 	jne .scan_magic
 
+	mov byte [current_ack], META_ACK
+
 start_read:
 	mov di,PTR(block)		 ; where the data is stored
 	mov si,di
@@ -148,13 +151,15 @@ recv_checksum:
 	DPRINT checksum_str
 
 recv_data:
-	PRINT_INFO reading_data_str 
+	PRINT_INFO reading_data_str
+	mov byte [current_ack], DATA_ACK
 	push cx
 .repeat:
 	call read_octet
 	stosb
 	loop .repeat
 	pop cx
+	mov byte [current_ack], META_ACK
 
 do_checksum:
 	xor ax,ax
@@ -213,7 +218,7 @@ exit:
 write_ack:
 	push dx
 	shr dl,3
-	mov al,DATA_ACK
+	mov al,[current_ack]
 	or al,dl
 	mov dx,BASE_PORT
 	out dx,al
@@ -410,6 +415,7 @@ not_restarting_str:	db 'not restarting read loop','$'
 
 magic_str:		db 'ppcopy'
 magic_buf:		db 0,0,0,0,0,0
+current_ack:		db META_ACK
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety
 block:			resw 1 ; expands to fill rest of 64k block

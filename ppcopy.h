@@ -5,10 +5,13 @@
 #include <sys/io.h>
 #include <unistd.h>
 
-#define BASEPORT	0x378
-#define DATAPORT	(BASEPORT+1)
-
-#define DELAY		1
+enum {
+	BASEPORT  = 0x378,
+	DATAPORT  = BASEPORT + 1,
+	DELAY     = 1,
+	META_ACK  = 0x1,
+	DATA_ACK  = 0x2,
+};
 
 void write_data(unsigned char data, unsigned int clock);
 unsigned char read_noack(unsigned char clock);

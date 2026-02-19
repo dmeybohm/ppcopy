@@ -14,7 +14,6 @@ unsigned char read_noack(unsigned char clock)
 
 	while (1) {
 		c0 = inb(DATAPORT) >> 3;
-		usleep(DELAY);
 		if ((c0 & 0x10) ^ clock)  {
 			c1 = inb(DATAPORT) >> 3;
 			if (c0 == c1)

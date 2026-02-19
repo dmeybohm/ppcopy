@@ -5,8 +5,6 @@
 
 #include "ppcopy.h"
 
-#define DATA_ACK	0x2
-
 static unsigned char read_status(unsigned char clock, unsigned char ack)
 {
 	unsigned char res = read_noack(clock);
@@ -28,8 +26,8 @@ static unsigned short read_word(void)
 {
 	unsigned char high, low;
 
-	high = read_octet(DATA_ACK);
-	low = read_octet(DATA_ACK);
+	high = read_octet(META_ACK);
+	low = read_octet(META_ACK);
 
 	return high << 8 | low;
 }
@@ -54,7 +52,7 @@ int main(void)
 
 		while (memcmp(buf, "ppcopy", 6) != 0) {
 			memmove(buf, buf + 1, 5);
-			buf[5] = read_octet(DATA_ACK);
+			buf[5] = read_octet(META_ACK);
 		}
 	}
 
