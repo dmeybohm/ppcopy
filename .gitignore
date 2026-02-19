@@ -15,6 +15,7 @@ par-write
 
 # QEMU disk images
 qemu-device/images/
+qemu/
 
 # macOS
 .DS_Store

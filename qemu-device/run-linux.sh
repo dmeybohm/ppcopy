@@ -39,7 +39,7 @@ if [ ! -f "$STATEFILE" ]; then
     truncate -s 2 "$STATEFILE"
 fi
 
-qemu-system-i386 \
+"$SCRIPT_DIR/../qemu/build/qemu-system-i386" \
     -m "$MEMORY" \
     -boot d \
     -cdrom "$CDROM" \
