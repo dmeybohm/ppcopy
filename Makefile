@@ -11,7 +11,7 @@ ASFLAGS = -fbin
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
 
-.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine update-floppies
+.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine download-qemu update-floppies
 
 # Default target - build everything
 all: par-read par-write parread.com parwrite.com
@@ -65,14 +65,17 @@ parread.com: parread.nasm
 parwrite.com: parwrite.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
 
-# Download distribution images
-download-images: download-freedos download-alpine
+# Download distribution images and QEMU
+download-images: download-freedos download-alpine download-qemu
 
 download-freedos:
 	./qemu-device/download-freedos.sh
 
 download-alpine:
 	./qemu-device/download-alpine.sh
+
+download-qemu:
+	./qemu-device/download-qemu.sh
 
 # Update floppy images with freshly built binaries
 # Images are recreated each time to avoid stale files and ensure correct 1.44MB geometry
@@ -96,4 +99,5 @@ update-floppies: linux-i386 dos
 # Clean all build artifacts
 clean:
 	rm -f par-read par-read.o par-write par-write.o ppcopy.o parread.com parwrite.com \
-		ppcopy-i386.o par-read-i386.o par-read-i386 par-write-i386.o par-write-i386
+		ppcopy-i386.o par-read-i386.o par-read-i386 par-write-i386.o par-write-i386 \
+		par-read-i386.stripped par-write-i386.stripped
