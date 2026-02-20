@@ -65,8 +65,11 @@ more data chunks, and is terminated by a size word of zero:
 
 The writer sends a `0x00` padding byte followed by the six ASCII bytes
 `ppcopy`. The padding byte absorbs a possible nibble-level desync when
-the reader starts before the writer. The reader scans incoming octets
-for the sequence `"ppcopy"` to self-synchronize.
+the reader starts before the writer. It is sent without ack validation
+because the reader may not have initialized its port yet; phantom acks
+from an uninitialized port would otherwise cause a spurious error. The
+reader scans incoming octets for the sequence `"ppcopy"` to
+self-synchronize.
 
 ### Reader Port Initialization
 

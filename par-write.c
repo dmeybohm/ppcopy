@@ -1,8 +1,6 @@
 // vim: sw=8 ts=8 noet
-#include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 
@@ -16,7 +14,7 @@ static unsigned char write_ackd(unsigned char data, unsigned char clock)
 	return read_noack(clock);
 }
 
-static int write_octet(unsigned char byte, unsigned char expected_ack)
+static void write_octet(unsigned char byte, unsigned char expected_ack)
 {
 	unsigned char byte_low, byte_high;
 	unsigned char ack_low, ack_high;
@@ -26,16 +24,12 @@ static int write_octet(unsigned char byte, unsigned char expected_ack)
 
 	ack_low = write_ackd(byte_low, 0x00);
 	ack_high = write_ackd(byte_high, 0x10);
-	if (ack_low != ack_high)
-		fprintf(stderr, "write_octet: Warning: ack_low (%x)!= ack_high"
-				" (%x)\n", ack_low, ack_high);
 	if (expected_ack && (ack_low != expected_ack || ack_high != expected_ack)) {
 		fprintf(stderr, "error: expected %s but received %s\n",
 			expected_ack == DATA_ACK ? "DATA_ACK" : "META_ACK",
 			ack_low == DATA_ACK ? "DATA_ACK" : "META_ACK");
 		exit(1);
 	}
-	return (ack_low == ack_high);
 }
 
 #define NR_HASHES 40
@@ -67,9 +61,9 @@ static void print_status(off_t sent, off_t total)
 
 int main(int argc, char *argv[])
 {
-	int fd;
+	FILE *fp;
 	time_t begin, end;
-	unsigned char *p;
+	static unsigned char buf[BLOCK_SIZE];
 	struct stat statbuf;
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;
@@ -81,29 +75,26 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	fd = open(argv[1], O_RDONLY);
-	if (fd < 0) {
-		perror("open");
+	fp = fopen(argv[1], "rb");
+	if (fp == NULL) {
+		perror("fopen");
 		exit(1);
 	}
-	if (fstat(fd, &statbuf) < 0) {
+	if (fstat(fileno(fp), &statbuf) < 0) {
 		perror("fstat");
 		exit(1);
 	}
 	total_size = statbuf.st_size;
-	p = mmap(0, total_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (p == MAP_FAILED) {
-		perror("mmap");
-		exit(1);
-	}
 
-	write_data(0x00, 0x0);
 	begin = time(NULL);
 
-	/* padding byte absorbs possible nibble desync if reader starts first */
+	/* padding byte absorbs possible nibble desync if reader starts first;
+	 * sent without ack validation because the reader may not have started */
+	write_octet(0x00, 0);
+
 	/* start sequence — reader scans for "ppcopy" to self-synchronize */
-	const char *start_seq = "\0ppcopy";
-	for (int j = 0; j < 7; j++)
+	const char *start_seq = "ppcopy";
+	for (int j = 0; j < 6; j++)
 		write_octet(start_seq[j], META_ACK);
 
 	fprintf(stderr, "sending %ld bytes\n", (long) total_size);
@@ -113,10 +104,16 @@ int main(int argc, char *argv[])
 	while (remaining > 0) {
 		chunk_size = remaining > BLOCK_SIZE ? BLOCK_SIZE : (unsigned short) remaining;
 
+		/* read one chunk into buf */
+		if (fread(buf, 1, chunk_size, fp) != chunk_size) {
+			perror("fread");
+			exit(1);
+		}
+
 		/* compute checksum for this chunk */
 		sum = 0;
 		for (i = 0; i < chunk_size; i++)
-			sum += p[sent + i];
+			sum += buf[i];
 
 		/* send size word (big-endian) */
 		write_octet((chunk_size >> 8) & 0xff, META_ACK);
@@ -129,7 +126,7 @@ int main(int argc, char *argv[])
 		/* send data */
 		for (i = 0; i < chunk_size; i++) {
 			print_status(sent + i, total_size);
-			write_octet(p[sent + i], DATA_ACK);
+			write_octet(buf[i], DATA_ACK);
 		}
 
 		sent += chunk_size;
