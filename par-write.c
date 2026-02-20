@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 {
 	FILE *fp;
 	time_t begin, end;
-	unsigned char buf[BLOCK_SIZE];
+	static unsigned char buf[BLOCK_SIZE];
 	struct stat statbuf;
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;

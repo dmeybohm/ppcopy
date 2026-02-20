@@ -11,7 +11,7 @@ ASFLAGS = -fbin
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
 
-.PHONY: all linux linux-i386 dos clean
+.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine update-floppies
 
 # Default target - build everything
 all: par-read par-write parread.com parwrite.com
@@ -64,6 +64,34 @@ parread.com: parread.nasm
 
 parwrite.com: parwrite.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
+
+# Download distribution images
+download-images: download-freedos download-alpine
+
+download-freedos:
+	./qemu-device/download-freedos.sh
+
+download-alpine:
+	./qemu-device/download-alpine.sh
+
+# Update floppy images with freshly built binaries
+# Images are recreated each time to avoid stale files and ensure correct 1.44MB geometry
+# Linux binaries are stripped to fit both on a 1.44MB floppy
+update-floppies: linux-i386 dos
+	mformat -i qemu-device/images/ppcopy-dos.img -C -f 1440 ::
+	mformat -i qemu-device/images/ppcopy-dos2.img -C -f 1440 ::
+	mcopy -i qemu-device/images/ppcopy-dos.img parread.com parwrite.com ::
+	mcopy -i qemu-device/images/ppcopy-dos2.img parread.com parwrite.com ::
+	mformat -i qemu-device/images/ppcopy-linux.img -C -f 1440 ::
+	mformat -i qemu-device/images/ppcopy-linux2.img -C -f 1440 ::
+	cp par-read-i386 par-read-i386.stripped
+	cp par-write-i386 par-write-i386.stripped
+	strip --strip-all par-read-i386.stripped par-write-i386.stripped
+	mcopy -i qemu-device/images/ppcopy-linux.img par-read-i386.stripped ::par-read-i386
+	mcopy -i qemu-device/images/ppcopy-linux.img par-write-i386.stripped ::par-write-i386
+	mcopy -i qemu-device/images/ppcopy-linux2.img par-read-i386.stripped ::par-read-i386
+	mcopy -i qemu-device/images/ppcopy-linux2.img par-write-i386.stripped ::par-write-i386
+	rm -f par-read-i386.stripped par-write-i386.stripped
 
 # Clean all build artifacts
 clean:
