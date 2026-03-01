@@ -184,14 +184,16 @@ close_file:
 	mov ah,0x3e			; bx still contains file handle
 	int 0x21			; DOS close file handle fn
 	DIE_IF c,SYM(close_err_str)
-	PRINT_SUCCESS wrote_str 
+	PRINT_SUCCESS wrote_str
 exit:
-	int 0x20
+	mov ax,0x4c00			; DOS exit with errorlevel 0
+	int 0x21
 %else
 close_file:
 exit:
-	PRINT_SUCCESS wrote_str 
-	int 0x20			; DOS terminate
+	PRINT_SUCCESS wrote_str
+	mov ax,0x4c00			; DOS exit with errorlevel 0
+	int 0x21
 %endif
 
 
@@ -332,7 +334,8 @@ print_nl:
 
 print_err_and_exit:
 	call print_info
-	int 0x20		; DOS terminate fn
+	mov ax,0x4c01		; DOS exit with errorlevel 1
+	int 0x21
 
 print_info:
 	push ax
