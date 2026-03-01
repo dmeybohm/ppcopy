@@ -12,8 +12,8 @@ make
 ```
 
 This builds all four programs:
-- `par-read` and `par-write` (Linux utilities)
-- `parread.com` and `parwrite.com` (DOS utilities)
+- `ppread` and `ppwrite` (Linux utilities)
+- `ppread.com` and `ppwrite.com` (DOS utilities)
 
 ### Requirements
 
@@ -25,21 +25,21 @@ This builds all four programs:
 You can build specific targets:
 
 ```sh
-make linux       # Build only Linux programs (par-read, par-write)
-make linux-i386  # Build 32-bit statically linked Linux programs (par-read-i386, par-write-i386)
-make dos         # Build only DOS programs (parread.com, parwrite.com)
+make linux       # Build only Linux programs (ppread, ppwrite)
+make linux-i386  # Build 32-bit statically linked Linux programs (ppread-i386, ppwrite-i386)
+make dos         # Build only DOS programs (ppread.com, ppwrite.com)
 ```
 
 The DOS assembly programs support different debug levels:
 
 ```sh
-make parread.com DEBUG=0   # Minimal size (188 bytes, default)
-make parread.com DEBUG=1   # With error messages (287 bytes)
-make parread.com DEBUG=2   # Verbose debugging (571 bytes)
+make ppread.com DEBUG=0   # Minimal size (188 bytes, default)
+make ppread.com DEBUG=1   # With error messages (287 bytes)
+make ppread.com DEBUG=2   # Verbose debugging (571 bytes)
 
-make parwrite.com DEBUG=0  # Minimal size (default)
-make parwrite.com DEBUG=1  # With error messages
-make parwrite.com DEBUG=2  # Verbose debugging
+make ppwrite.com DEBUG=0  # Minimal size (default)
+make ppwrite.com DEBUG=1  # With error messages
+make ppwrite.com DEBUG=2  # Verbose debugging
 ```
 
 The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
@@ -54,7 +54,7 @@ Linux, and another to read.
 First, connect the LapLink cable. Then, on one computer, type:
 
 ```sh
-par-write <file>
+ppwrite <file>
 ```
 
 Replacing `<file>` with whatever file you want to copy.
@@ -62,7 +62,7 @@ Replacing `<file>` with whatever file you want to copy.
 On the other computer type:
 
 ```sh
-par-read > <output>
+ppread > <output>
 ```
 
 Replacing `<output>` with whatever file you want to copy.
@@ -72,31 +72,31 @@ The file will be written to `<output>`
 ### Usage on DOS
 
 There are assembly language versions that you can use for reading and writing on
-DOS. They consist of two .COM programs: `parread.com` and `parwrite.com`. They
+DOS. They consist of two .COM programs: `ppread.com` and `ppwrite.com`. They
 are optimized to be small so that you can load them via the `debug` utility if
 you have no other way of copying files to the DOS machine.
 
 #### Receiving files on DOS
 
 Connect a LapLink cable between the Linux computer and the DOS machine. Run
-`par-write` on the Linux computer, and on the DOS computer run
+`ppwrite` on the Linux computer, and on the DOS computer run
 
 ```cmd
-parread
+ppread
 ```
 
-The output will be placed in `C:\parread.out`.
+The output will be placed in `C:\ppread.out`.
 
 #### Sending files from DOS
 
-`parwrite.com` can send files from DOS, enabling DOS-to-DOS or DOS-to-Linux
+`ppwrite.com` can send files from DOS, enabling DOS-to-DOS or DOS-to-Linux
 transfers without needing a Linux sender. On the DOS computer, run
 
 ```cmd
-parwrite <file>
+ppwrite <file>
 ```
 
-On the receiving end, run `par-read` on Linux or `parread` on another DOS
+On the receiving end, run `ppread` on Linux or `ppread` on another DOS
 machine.
 
 ## QEMU Device

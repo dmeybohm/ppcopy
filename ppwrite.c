@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
 
 	if (argc != 2) {
-		fprintf(stderr, "usage: par-write <file>\n");
+		fprintf(stderr, "usage: ppwrite <file>\n");
 		exit(1);
 	}
 

@@ -1,5 +1,5 @@
 ;
-; parwrite.nasm -- Send files through a parallel port connected
+; ppwrite.nasm -- Send files through a parallel port connected
 ;                  with a laplink cable from DOS/DOSEMU/FreeDOS
 ;
 
@@ -430,7 +430,7 @@ sent_str:
 			db 'sent',10,13,'$'
 %endif
 
-usage_str:		db 'usage: parwrite <file>',10,13,'$'
+usage_str:		db 'usage: ppwrite <file>',10,13,'$'
 
 %if (DEBUG > 0)
 open_err_str:		db 'open$'

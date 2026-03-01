@@ -1,11 +1,11 @@
 ;
-; parread.nasm -- Copy files through through a parallel port connected
+; ppread.nasm -- Copy files through through a parallel port connected
 ;                   with a laplink cable in DOS/DOSEMU/FreeDOS 
 ;                 Top speed may be ~14k/sec. 
 ;
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
-%define OUTPUT_FILE	'C:\parread.out'
+%define OUTPUT_FILE	'C:\ppread.out'
 
 %define META_ACK	0x1
 

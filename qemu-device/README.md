@@ -73,7 +73,7 @@ qemu-system-i386 ... -parallel none -device isa-laplink,file=/tmp/laplink.state,
 qemu-system-i386 ... -parallel none -device isa-laplink,file=/tmp/laplink.state,side=1
 ```
 
-Run `parwrite.com <file>` in one VM and `parread.com` in the other to transfer files.
+Run `ppwrite.com <file>` in one VM and `ppread.com` in the other to transfer files.
 
 ## Verification
 

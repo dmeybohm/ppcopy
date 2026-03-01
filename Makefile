@@ -14,55 +14,55 @@ DEBUG ?= 0
 .PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine download-qemu update-floppies
 
 # Default target - build everything
-all: par-read par-write parread.com parwrite.com
+all: ppread ppwrite ppread.com ppwrite.com
 
 # Build only Linux programs
-linux: par-read par-write
+linux: ppread ppwrite
 
 # Build only DOS programs
-dos: parread.com parwrite.com
+dos: ppread.com ppwrite.com
 
 # Build 32-bit static Linux programs
-linux-i386: par-read-i386 par-write-i386
+linux-i386: ppread-i386 ppwrite-i386
 
 # Shared library
 ppcopy.o: ppcopy.c ppcopy.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Linux C programs
-par-read: par-read.o ppcopy.o
+ppread: ppread.o ppcopy.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-par-read.o: par-read.c ppcopy.h
+ppread.o: ppread.c ppcopy.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-par-write: par-write.o ppcopy.o
+ppwrite: ppwrite.o ppcopy.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-par-write.o: par-write.c ppcopy.h
+ppwrite.o: ppwrite.c ppcopy.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # 32-bit static Linux C programs
 ppcopy-i386.o: ppcopy.c ppcopy.h
 	$(CC32) $(CFLAGS32) -c -o $@ $<
 
-par-read-i386.o: par-read.c ppcopy.h
+ppread-i386.o: ppread.c ppcopy.h
 	$(CC32) $(CFLAGS32) -c -o $@ $<
 
-par-read-i386: par-read-i386.o ppcopy-i386.o
+ppread-i386: ppread-i386.o ppcopy-i386.o
 	$(CC32) $(CFLAGS32) -o $@ $^
 
-par-write-i386.o: par-write.c ppcopy.h
+ppwrite-i386.o: ppwrite.c ppcopy.h
 	$(CC32) $(CFLAGS32) -c -o $@ $<
 
-par-write-i386: par-write-i386.o ppcopy-i386.o
+ppwrite-i386: ppwrite-i386.o ppcopy-i386.o
 	$(CC32) $(CFLAGS32) -o $@ $^
 
 # DOS assembly programs
-parread.com: parread.nasm
+ppread.com: ppread.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
 
-parwrite.com: parwrite.nasm
+ppwrite.com: ppwrite.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
 
 # Download distribution images and QEMU
@@ -83,21 +83,21 @@ download-qemu:
 update-floppies: linux-i386 dos
 	mformat -i qemu-device/images/ppcopy-dos.img -C -f 1440 ::
 	mformat -i qemu-device/images/ppcopy-dos2.img -C -f 1440 ::
-	mcopy -i qemu-device/images/ppcopy-dos.img parread.com parwrite.com ::
-	mcopy -i qemu-device/images/ppcopy-dos2.img parread.com parwrite.com ::
+	mcopy -i qemu-device/images/ppcopy-dos.img ppread.com ppwrite.com ::
+	mcopy -i qemu-device/images/ppcopy-dos2.img ppread.com ppwrite.com ::
 	mformat -i qemu-device/images/ppcopy-linux.img -C -f 1440 ::
 	mformat -i qemu-device/images/ppcopy-linux2.img -C -f 1440 ::
-	cp par-read-i386 par-read-i386.stripped
-	cp par-write-i386 par-write-i386.stripped
-	strip --strip-all par-read-i386.stripped par-write-i386.stripped
-	mcopy -i qemu-device/images/ppcopy-linux.img par-read-i386.stripped ::par-read-i386
-	mcopy -i qemu-device/images/ppcopy-linux.img par-write-i386.stripped ::par-write-i386
-	mcopy -i qemu-device/images/ppcopy-linux2.img par-read-i386.stripped ::par-read-i386
-	mcopy -i qemu-device/images/ppcopy-linux2.img par-write-i386.stripped ::par-write-i386
-	rm -f par-read-i386.stripped par-write-i386.stripped
+	cp ppread-i386 ppread-i386.stripped
+	cp ppwrite-i386 ppwrite-i386.stripped
+	strip --strip-all ppread-i386.stripped ppwrite-i386.stripped
+	mcopy -i qemu-device/images/ppcopy-linux.img ppread-i386.stripped ::ppread-i386
+	mcopy -i qemu-device/images/ppcopy-linux.img ppwrite-i386.stripped ::ppwrite-i386
+	mcopy -i qemu-device/images/ppcopy-linux2.img ppread-i386.stripped ::ppread-i386
+	mcopy -i qemu-device/images/ppcopy-linux2.img ppwrite-i386.stripped ::ppwrite-i386
+	rm -f ppread-i386.stripped ppwrite-i386.stripped
 
 # Clean all build artifacts
 clean:
-	rm -f par-read par-read.o par-write par-write.o ppcopy.o parread.com parwrite.com \
-		ppcopy-i386.o par-read-i386.o par-read-i386 par-write-i386.o par-write-i386 \
-		par-read-i386.stripped par-write-i386.stripped
+	rm -f ppread ppread.o ppwrite ppwrite.o ppcopy.o ppread.com ppwrite.com \
+		ppcopy-i386.o ppread-i386.o ppread-i386 ppwrite-i386.o ppwrite-i386 \
+		ppread-i386.stripped ppwrite-i386.stripped
