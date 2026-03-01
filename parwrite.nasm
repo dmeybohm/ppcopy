@@ -5,8 +5,6 @@
 
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
-%define CONTROL_PORT	(BASE_PORT+2)
-
 %define META_ACK	0x1
 %define DATA_ACK	0x2
 
@@ -142,7 +140,8 @@ start:
 	mov dx,PTR(usage_str)
 	mov ah,0x09
 	int 0x21
-	int 0x20
+	mov ax,0x4c01
+	int 0x21
 .has_arg:
 	dec si			; back up to first non-space char
 	mov dx,si		; DX = start of filename (ASCIIZ)
@@ -279,7 +278,6 @@ write_ackd:
 
 ; write_octet: send byte as two nibbles (low first, high second)
 ; Input: AL = byte
-; Output: ZF=1 if acks match (success)
 ; Preserves: BX, DX
 write_octet:
 	push dx
@@ -293,7 +291,6 @@ write_octet:
 	shr al,4		; high nibble
 	mov dl,0x10		; clock = 0x10
 	call write_ackd		; AL = ack_high
-	cmp al,ch		; compare acks (sets ZF)
 	; Check ACK type if expected_ack is set
 	cmp byte [expected_ack], 0
 	je .skip_ack_check
@@ -359,7 +356,6 @@ print_loop:
 	int 0x10
 	mov al,':'
 	int 0x10
-no_reg:
 	add bp,2
 	call print_hex
 	call print_space
@@ -402,7 +398,8 @@ print_nl:
 
 print_err_and_exit:
 	call print_info
-	int 0x20		; DOS terminate fn
+	mov ax,0x4c01		; DOS exit with errorlevel 1
+	int 0x21
 
 print_info:
 	push ax
