@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-QEMU="$PROJECT_DIR/qemu/build/qemu-system-i386"
+QEMU="${QEMU:-$PROJECT_DIR/qemu/install/bin/qemu-system-i386}"
 IMAGES_DIR="$PROJECT_DIR/qemu-device/images"
 FREEDOS_IMG="$IMAGES_DIR/FD14BOOT.img"
 ALPINE_ISO="$IMAGES_DIR/alpine-virt-3.23.3-x86.iso"
