@@ -5,11 +5,9 @@
 ;
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
-%define CONTROL_PORT	(BASE_PORT+2)
 %define OUTPUT_FILE	'C:\parread.out'
 
 %define META_ACK	0x1
-%define DATA_ACK	0x2
 
 ;
 ; Turn these off for smaller code,
@@ -108,7 +106,7 @@ start:
 	xor cx,cx 			; attrib-flags
 	int 0x21
 	DIE_IF c,SYM(open_err_str)
-	mov bx,ax			; Store file-ptr in bx
+	xchg bx,ax			; Store file-ptr in bx
 	cld
 
 	; Initialize port so writer sees a known state
@@ -116,23 +114,21 @@ start:
 	mov al,0x10
 	out dx,al
 
-	; Scan for "ppcopy" start sequence using sliding window
+	; Scan for "ppcopy" using scasb prefix matcher
+	mov di,PTR(magic_str)
 .scan_magic:
 	call read_octet
-	; Shift magic_buf left by 1 and append new byte
-	mov di,PTR(magic_buf)
-	mov si,PTR(magic_buf+1)
-	mov cx,5
-	rep movsb
-	stosb			; magic_buf[5] = al
-	; Compare against "ppcopy"
-	mov si,PTR(magic_buf)
+	scasb				; cmp al,[es:di]; inc di
+	je .check_done
 	mov di,PTR(magic_str)
-	mov cx,6
-	repe cmpsb
+	cmp al,'p'
 	jne .scan_magic
-
-	mov byte [current_ack], META_ACK
+	inc di				; matched pattern[0]='p'
+	inc di				; matched pattern[1]='p' too
+	jmp .scan_magic
+.check_done:
+	cmp byte [di],META_ACK		; sentinel: current_ack follows magic_str
+	jne .scan_magic
 
 start_read:
 	mov di,PTR(block)		 ; where the data is stored
@@ -140,26 +136,26 @@ start_read:
 
 recv_size:
 	call read_word
-	mov cx,ax			; remember to preserve size in cx
+	xchg cx,ax			; remember to preserve size in cx
 	jcxz close_file
 	DPRINT size_str
 
 recv_checksum:
 	DPRINT synch_str
 	call read_word
-	mov bp,ax			; store checksum in bp
+	xchg bp,ax			; store checksum in bp
 	DPRINT checksum_str
 
 recv_data:
 	PRINT_INFO reading_data_str
-	mov byte [current_ack], DATA_ACK
+	inc byte [current_ack]
 	push cx
 .repeat:
 	call read_octet
 	stosb
 	loop .repeat
 	pop cx
-	mov byte [current_ack], META_ACK
+	dec byte [current_ack]
 
 do_checksum:
 	xor ax,ax
@@ -188,15 +184,16 @@ close_file:
 	mov ah,0x3e			; bx still contains file handle
 	int 0x21			; DOS close file handle fn
 	DIE_IF c,SYM(close_err_str)
-	PRINT_SUCCESS wrote_str 
+	PRINT_SUCCESS wrote_str
 exit:
-	int 0x20
+	mov ax,0x4c00			; DOS exit with errorlevel 0
+	int 0x21
 %else
 close_file:
 exit:
-	PRINT_SUCCESS wrote_str 
-	mov ah,0x4c			; DOS exit fn 
-	int 0x21 			;   with return code in %al
+	PRINT_SUCCESS wrote_str
+	mov ax,0x4c00			; DOS exit with errorlevel 0
+	int 0x21
 %endif
 
 
@@ -213,30 +210,16 @@ exit:
 ; reduce code size.  
 ;
 
-; This routine is useless.  it should be inlined instead
-;; in=(al = data, dx = clock)
-write_ack:
-	push dx
-	shr dl,3
-	mov al,[current_ack]
-	or al,dl
-	mov dx,BASE_PORT
-	out dx,al
-	pop dx
-	ret
-
 %macro DO_READ 0 ;(dl = clock, al = output)
-;read_noack: 
 	push cx
-	push bx
-	mov bx,dx	; clock aliased to bl
+	mov ch,dl	; clock aliased to ch
 	mov dx,DATA_PORT
 .redo:
 	in al,dx
 	mov cl,al	; cl = first value read
 	uSLEEP
 	and al,0x80
-	xor al,bl
+	xor al,ch
 	jz .redo
 	in al,dx
 	cmp al,cl
@@ -244,47 +227,38 @@ write_ack:
 
 	shr al,3
 	and al,0x0f
-	mov dx,bx	; restore dx from bx
-	pop bx
+	mov dl,ch	; restore dl from ch
 	pop cx
-	;ret
 %endmacro
-	
+
 read_status: ;(dx = clock)
-	;call read_noack
 	DO_READ
 	push ax
-	call write_ack
+	shr dl,3
+	mov al,[current_ack]
+	or al,dl
+	mov dx,BASE_PORT
+	out dx,al
 	pop ax
 	ret
 
 read_octet: ;(ax = ack)
 	push dx
-	push cx
 	xor dx,dx
 	call read_status
-	mov cl,al	; save low nibble
+	push ax		; save low nibble on stack
 	mov dl,0x80	; make clock go high
 	call read_status
 	shl al,4	; put high nibble in high al
-	or al,cl
-	pop cx
+	pop dx
+	or al,dl	; combine with low nibble
 	pop dx
 	ret
 
 read_word:
-;	push cx
-;	call read_octet
-;	mov cx,ax
-;	call read_octet
-;	shl ax,8
-;	or ax,cx
-;	pop cx
-;	ret
 	call read_octet			; Big endian read here
 	mov ah,al			;   saves the xchg instruction.
 	call read_octet
-	;xchg ah,al
 	ret
 
 %if (DEBUG > 1)
@@ -360,7 +334,8 @@ print_nl:
 
 print_err_and_exit:
 	call print_info
-	int 0x20		; DOS terminate fn
+	mov ax,0x4c01		; DOS exit with errorlevel 1
+	int 0x21
 
 print_info:
 	push ax
@@ -401,12 +376,9 @@ close_err_str:		db 'close','$'
 ; Strings printed by DPRINT
 checksum_str:		db 'read checksum','$'
 size_str:		db 'read size','$'
-reading_low_data:	db 'reading low data','$'
-reading_high_data:	db 'reading high data','$'
 writing_str:		db 'calling write','$'
 good_checksum_str:	db 'good checksum','$'
 synch_str:		db 'got synch','$'
-waiting_str:		db 'waiting for data','$'
 not_restarting_str:	db 'not restarting read loop','$'
 %endif ;(DEBUG > 1)
 
@@ -414,8 +386,7 @@ not_restarting_str:	db 'not restarting read loop','$'
 
 
 magic_str:		db 'ppcopy'
-magic_buf:		db 0,0,0,0,0,0
-current_ack:		db META_ACK
+current_ack:		db META_ACK	; must follow magic_str (sentinel for scan)
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety
 block:			resw 1 ; expands to fill rest of 64k block

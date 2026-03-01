@@ -1,6 +1,8 @@
 # Build artifacts - Linux binaries
 par-read
 par-write
+par-read-i386
+par-write-i386
 
 # Build artifacts - DOS binaries
 *.com
@@ -15,7 +17,7 @@ par-write
 
 # QEMU disk images
 qemu-device/images/
-qemu/
+qemu
 
 # macOS
 .DS_Store
