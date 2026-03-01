@@ -19,6 +19,9 @@ ppwrite-i386
 qemu-device/images/
 qemu
 
+# Test artifacts
+tests/tmp/
+
 # macOS
 .DS_Store
 

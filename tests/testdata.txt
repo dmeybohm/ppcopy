@@ -1,0 +1,21 @@
+This is the ppcopy integration test data file.
+It contains deterministic content used to verify file transfers
+between DOS and Linux VMs over the emulated LapLink cable.
+
+Line 005: The quick brown fox jumps over the lazy dog.
+Line 006: Pack my box with five dozen liquor jugs.
+Line 007: How vexingly quick daft zebras jump!
+Line 008: The five boxing wizards jump quickly.
+Line 009: Jackdaws love my big sphinx of quartz.
+Line 010: 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz
+Line 011: !@#$%^&*()_+-=[]{}|;':\",./<>?
+Line 012: Testing binary-safe transfer with repeated patterns:
+Line 013: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Line 014: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Line 015: 0000000000000000000000000000000000000000000000000000000000000000
+Line 016: FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+Line 017: Mixed case: aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ
+Line 018: Numbers: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16
+Line 019: Hex values: 0x00 0xFF 0x55 0xAA 0x0F 0xF0 0x80 0x7F
+Line 020: This line intentionally left meaningful.
+Line 021: Final line of test data - end of file marker.

@@ -11,7 +11,7 @@ ASFLAGS = -fbin
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
 
-.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine download-qemu update-floppies
+.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine download-qemu update-floppies test
 
 # Default target - build everything
 all: ppread ppwrite ppread.com ppwrite.com
@@ -95,6 +95,10 @@ update-floppies: linux-i386 dos
 	mcopy -i qemu-device/images/ppcopy-linux2.img ppread-i386.stripped ::ppread-i386
 	mcopy -i qemu-device/images/ppcopy-linux2.img ppwrite-i386.stripped ::ppwrite-i386
 	rm -f ppread-i386.stripped ppwrite-i386.stripped
+
+# Run integration tests
+test: dos linux-i386
+	./tests/run-tests.sh
 
 # Clean all build artifacts
 clean:
