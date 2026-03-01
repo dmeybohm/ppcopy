@@ -1,0 +1,2 @@
+/tests/*.sh linguist-vendored
+/qemu-device/*.sh linguist-vendored
