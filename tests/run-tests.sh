@@ -13,10 +13,11 @@ QEMU="${QEMU:-$PROJECT_DIR/qemu/install/bin/qemu-system-i386}"
 IMAGES_DIR="$PROJECT_DIR/qemu-device/images"
 FREEDOS_IMG="$IMAGES_DIR/FD14BOOT.img"
 ALPINE_ISO="$IMAGES_DIR/alpine-virt-3.23.3-x86.iso"
-TESTDATA="$SCRIPT_DIR/testdata.txt"
+TESTDATA_SMALL="$SCRIPT_DIR/testdata.txt"
 LINUX_INIT="$SCRIPT_DIR/linux-test-init.sh"
 TMP_DIR="$SCRIPT_DIR/tmp"
-TIMEOUT=90
+TIMEOUT_SMALL=90
+TIMEOUT_LARGE=180
 
 TESTS_RUN=0
 TESTS_PASSED=0
@@ -64,6 +65,30 @@ check_prerequisites() {
             echo "  - $m"
         done
         exit 1
+    fi
+}
+
+# ─── Large test data generation ──────────────────────────────────────────────
+
+generate_large_testdata() {
+    local outfile="$1"
+    # Generate deterministic ~500KB file: numbered lines, trimmed to exact size.
+    # Each line: "ppcopy-test-line-NNNNNN-ABCDEFGHIJ\n" = 35 bytes
+    seq 1 14629 | while read -r i; do
+        printf 'ppcopy-test-line-%06d-ABCDEFGHIJ\n' "$i"
+    done | head -c 512000 > "$outfile"
+}
+
+# ─── Timeout helper ──────────────────────────────────────────────────────────
+
+timeout_for_file() {
+    local file="$1"
+    local size
+    size=$(wc -c < "$file")
+    if [ "$size" -gt 100000 ]; then
+        echo "$TIMEOUT_LARGE"
+    else
+        echo "$TIMEOUT_SMALL"
     fi
 }
 
@@ -123,6 +148,9 @@ prepare_dos_hdd() {
 prepare_linux_initrd() {
     local combined="$1"
     local role="$2"  # writer or reader
+    local testdata="$3"
+    local testdata_basename
+    testdata_basename=$(basename "$testdata")
 
     local overlay_dir="$TMP_DIR/overlay-$$-$role"
     mkdir -p "$overlay_dir"
@@ -134,7 +162,7 @@ prepare_linux_initrd() {
     chmod +x "$overlay_dir/ppread-i386" "$overlay_dir/ppwrite-i386"
 
     # Copy test data and init script
-    cp "$TESTDATA" "$overlay_dir/testdata.txt"
+    cp "$testdata" "$overlay_dir/$testdata_basename"
     cp "$LINUX_INIT" "$overlay_dir/init"
     chmod +x "$overlay_dir/init"
 
@@ -161,11 +189,11 @@ launch_dos_vm() {
     QEMU_PIDS+=($!)
 }
 
-# launch_linux_vm SIDE STATE_FILE VMLINUZ INITRD ROLE LOG_FILE
+# launch_linux_vm SIDE STATE_FILE VMLINUZ INITRD ROLE LOG_FILE TESTFILE_BASENAME
 launch_linux_vm() {
-    local side="$1" state="$2" vmlinuz="$3" initrd="$4" role="$5" log="$6"
+    local side="$1" state="$2" vmlinuz="$3" initrd="$4" role="$5" log="$6" testfile="$7"
     "$QEMU" -m 128 -kernel "$vmlinuz" -initrd "$initrd" \
-        -append "console=ttyS0 init=/init ppcopy_role=$role ppcopy_file=/testdata.txt" \
+        -append "console=ttyS0 init=/init ppcopy_role=$role ppcopy_file=/$testfile" \
         -display none -serial file:"$log" -no-reboot \
         -parallel none -device isa-laplink,side="$side",file="$state" 2>/dev/null &
     QEMU_PIDS+=($!)
@@ -196,10 +224,17 @@ wait_with_timeout() {
 
 # ─── Test scenarios ─────────────────────────────────────────────────────────
 
-# Test 1: DOS writer → Linux reader
+# DOS writer → Linux reader
 test_dos_to_linux() {
-    local test_dir="$TMP_DIR/test1"
+    local testdata="$1"
+    local test_id="$2"
+    local testdata_basename
+    testdata_basename=$(basename "$testdata")
+    local test_dir="$TMP_DIR/test${test_id}"
     mkdir -p "$test_dir"
+
+    local timeout
+    timeout=$(timeout_for_file "$testdata")
 
     local state="$test_dir/laplink.state"
     truncate -s 2 "$state"
@@ -211,22 +246,22 @@ test_dos_to_linux() {
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
         "$PROJECT_DIR/ppwrite.com:PPWRITE.COM" \
-        "$TESTDATA:TESTDATA.TXT"
+        "$testdata:TESTDATA.TXT"
 
     # Prepare Linux reader
     local initrd="$test_dir/initrd.img"
-    prepare_linux_initrd "$initrd" "reader"
+    prepare_linux_initrd "$initrd" "reader" "$testdata"
 
     local log="$test_dir/serial.log"
 
     # Launch VMs
     local vmlinuz="$TMP_DIR/alpine/vmlinuz-virt"
-    launch_linux_vm 1 "$state" "$vmlinuz" "$initrd" "reader" "$log"
+    launch_linux_vm 1 "$state" "$vmlinuz" "$initrd" "reader" "$log" "$testdata_basename"
     local linux_pid=${QEMU_PIDS[-1]}
     launch_dos_vm 0 "$state" "$floppy" "$hdd"
     local dos_pid=${QEMU_PIDS[-1]}
 
-    if ! wait_with_timeout "$linux_pid" "$dos_pid" "$TIMEOUT"; then
+    if ! wait_with_timeout "$linux_pid" "$dos_pid" "$timeout"; then
         echo "FAIL (timeout)"
         return 1
     fi
@@ -244,17 +279,24 @@ test_dos_to_linux() {
     fi
 }
 
-# Test 2: Linux writer → DOS reader
+# Linux writer → DOS reader
 test_linux_to_dos() {
-    local test_dir="$TMP_DIR/test2"
+    local testdata="$1"
+    local test_id="$2"
+    local testdata_basename
+    testdata_basename=$(basename "$testdata")
+    local test_dir="$TMP_DIR/test${test_id}"
     mkdir -p "$test_dir"
+
+    local timeout
+    timeout=$(timeout_for_file "$testdata")
 
     local state="$test_dir/laplink.state"
     truncate -s 2 "$state"
 
     # Prepare Linux writer
     local initrd="$test_dir/initrd.img"
-    prepare_linux_initrd "$initrd" "writer"
+    prepare_linux_initrd "$initrd" "writer" "$testdata"
 
     # Prepare DOS reader: floppy boots, runs PPREAD.COM (writes to C:\PPREAD.OUT)
     local floppy="$test_dir/boot.img"
@@ -270,10 +312,10 @@ test_linux_to_dos() {
     local vmlinuz="$TMP_DIR/alpine/vmlinuz-virt"
     launch_dos_vm 1 "$state" "$floppy" "$hdd"
     local dos_pid=${QEMU_PIDS[-1]}
-    launch_linux_vm 0 "$state" "$vmlinuz" "$initrd" "writer" "$log"
+    launch_linux_vm 0 "$state" "$vmlinuz" "$initrd" "writer" "$log" "$testdata_basename"
     local linux_pid=${QEMU_PIDS[-1]}
 
-    if ! wait_with_timeout "$linux_pid" "$dos_pid" "$TIMEOUT"; then
+    if ! wait_with_timeout "$linux_pid" "$dos_pid" "$timeout"; then
         echo "FAIL (timeout)"
         return 1
     fi
@@ -281,7 +323,7 @@ test_linux_to_dos() {
     # Extract PPREAD.OUT from HDD and compare
     local received="$test_dir/received.bin"
     if mcopy -i "$hdd" ::PPREAD.OUT "$received" 2>/dev/null; then
-        if cmp -s "$TESTDATA" "$received"; then
+        if cmp -s "$testdata" "$received"; then
             echo "PASS"
             return 0
         else
@@ -294,10 +336,15 @@ test_linux_to_dos() {
     fi
 }
 
-# Test 3: DOS writer → DOS reader
+# DOS writer → DOS reader
 test_dos_to_dos() {
-    local test_dir="$TMP_DIR/test3"
+    local testdata="$1"
+    local test_id="$2"
+    local test_dir="$TMP_DIR/test${test_id}"
     mkdir -p "$test_dir"
+
+    local timeout
+    timeout=$(timeout_for_file "$testdata")
 
     local state="$test_dir/laplink.state"
     truncate -s 2 "$state"
@@ -309,7 +356,7 @@ test_dos_to_dos() {
     local writer_hdd="$test_dir/writer-hdd.img"
     prepare_dos_hdd "$writer_hdd" \
         "$PROJECT_DIR/ppwrite.com:PPWRITE.COM" \
-        "$TESTDATA:TESTDATA.TXT"
+        "$testdata:TESTDATA.TXT"
 
     # Prepare DOS reader
     local reader_floppy="$test_dir/reader-boot.img"
@@ -325,7 +372,7 @@ test_dos_to_dos() {
     launch_dos_vm 1 "$state" "$reader_floppy" "$reader_hdd"
     local reader_pid=${QEMU_PIDS[-1]}
 
-    if ! wait_with_timeout "$writer_pid" "$reader_pid" "$TIMEOUT"; then
+    if ! wait_with_timeout "$writer_pid" "$reader_pid" "$timeout"; then
         echo "FAIL (timeout)"
         return 1
     fi
@@ -333,7 +380,7 @@ test_dos_to_dos() {
     # Extract PPREAD.OUT from reader HDD and compare
     local received="$test_dir/received.bin"
     if mcopy -i "$reader_hdd" ::PPREAD.OUT "$received" 2>/dev/null; then
-        if cmp -s "$TESTDATA" "$received"; then
+        if cmp -s "$testdata" "$received"; then
             echo "PASS"
             return 0
         else
@@ -346,32 +393,39 @@ test_dos_to_dos() {
     fi
 }
 
-# Test 4: Linux writer → Linux reader
+# Linux writer → Linux reader
 test_linux_to_linux() {
-    local test_dir="$TMP_DIR/test4"
+    local testdata="$1"
+    local test_id="$2"
+    local testdata_basename
+    testdata_basename=$(basename "$testdata")
+    local test_dir="$TMP_DIR/test${test_id}"
     mkdir -p "$test_dir"
+
+    local timeout
+    timeout=$(timeout_for_file "$testdata")
 
     local state="$test_dir/laplink.state"
     truncate -s 2 "$state"
 
     # Prepare both Linux VMs
     local writer_initrd="$test_dir/writer-initrd.img"
-    prepare_linux_initrd "$writer_initrd" "writer"
+    prepare_linux_initrd "$writer_initrd" "writer" "$testdata"
 
     local reader_initrd="$test_dir/reader-initrd.img"
-    prepare_linux_initrd "$reader_initrd" "reader"
+    prepare_linux_initrd "$reader_initrd" "reader" "$testdata"
 
     local vmlinuz="$TMP_DIR/alpine/vmlinuz-virt"
     local writer_log="$test_dir/writer-serial.log"
     local reader_log="$test_dir/reader-serial.log"
 
     # Launch VMs
-    launch_linux_vm 0 "$state" "$vmlinuz" "$writer_initrd" "writer" "$writer_log"
+    launch_linux_vm 0 "$state" "$vmlinuz" "$writer_initrd" "writer" "$writer_log" "$testdata_basename"
     local writer_pid=${QEMU_PIDS[-1]}
-    launch_linux_vm 1 "$state" "$vmlinuz" "$reader_initrd" "reader" "$reader_log"
+    launch_linux_vm 1 "$state" "$vmlinuz" "$reader_initrd" "reader" "$reader_log" "$testdata_basename"
     local reader_pid=${QEMU_PIDS[-1]}
 
-    if ! wait_with_timeout "$writer_pid" "$reader_pid" "$TIMEOUT"; then
+    if ! wait_with_timeout "$writer_pid" "$reader_pid" "$timeout"; then
         echo "FAIL (timeout)"
         return 1
     fi
@@ -410,12 +464,20 @@ mkdir -p "$TMP_DIR"
 # Extract Alpine kernel/initramfs (cached)
 extract_alpine_kernel
 
+# Generate large test data
+echo "Generating large test data..."
+TESTDATA_LARGE="$TMP_DIR/testdata-large.txt"
+generate_large_testdata "$TESTDATA_LARGE"
+
 # Run tests
+TOTAL_TESTS=8
+
 run_test() {
     local num="$1" label="$2" func="$3"
+    shift 3
     TESTS_RUN=$((TESTS_RUN + 1))
-    printf "[%d/4] %-16s ... " "$num" "$label"
-    if result=$("$func" 2>&1); then
+    printf "[%d/%d] %-30s ... " "$num" "$TOTAL_TESTS" "$label"
+    if result=$("$func" "$@" 2>&1); then
         echo "$result"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
@@ -426,14 +488,18 @@ run_test() {
     QEMU_PIDS=()
 }
 
-run_test 1 "DOS → Linux"   test_dos_to_linux
-run_test 2 "Linux → DOS"   test_linux_to_dos
-run_test 3 "DOS → DOS"     test_dos_to_dos
-run_test 4 "Linux → Linux" test_linux_to_linux
+run_test 1 "DOS → Linux (small)"   test_dos_to_linux   "$TESTDATA_SMALL" 1
+run_test 2 "Linux → DOS (small)"   test_linux_to_dos   "$TESTDATA_SMALL" 2
+run_test 3 "DOS → DOS (small)"     test_dos_to_dos     "$TESTDATA_SMALL" 3
+run_test 4 "Linux → Linux (small)" test_linux_to_linux "$TESTDATA_SMALL" 4
+run_test 5 "DOS → Linux (large)"   test_dos_to_linux   "$TESTDATA_LARGE" 5
+run_test 6 "Linux → DOS (large)"   test_linux_to_dos   "$TESTDATA_LARGE" 6
+run_test 7 "DOS → DOS (large)"     test_dos_to_dos     "$TESTDATA_LARGE" 7
+run_test 8 "Linux → Linux (large)" test_linux_to_linux "$TESTDATA_LARGE" 8
 
 echo ""
 if [ "$TESTS_FAILED" -eq 0 ]; then
-    echo "All $TESTS_PASSED tests passed."
+    echo "All $TESTS_PASSED of $TOTAL_TESTS tests passed."
     exit 0
 else
     echo "$TESTS_FAILED of $TESTS_RUN tests failed."
