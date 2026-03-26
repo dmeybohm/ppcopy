@@ -44,6 +44,22 @@ make ppwrite.com DEBUG=2  # Verbose debugging
 
 The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
 
+## Testing
+
+To run the integration tests:
+
+```sh
+make test
+```
+
+This uses QEMU to run end-to-end transfer tests between all combinations of
+DOS and Linux senders/receivers, with both small and large files.
+
+### Test Requirements
+
+- **QEMU** (built from the `qemu/` submodule — see [qemu-device/README.md](qemu-device/README.md))
+- **32-bit GCC libraries** (for building `linux-i386` static binaries)
+
 ## Usage
 
 ### Usage on Linux

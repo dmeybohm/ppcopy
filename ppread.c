@@ -34,7 +34,7 @@ static unsigned short read_word(void)
 
 int main(void)
 {
-	unsigned char *p;
+	static unsigned char packet_buf[65536];
 	unsigned short checksum, size;
 	unsigned short sum, i;
 	FILE *fout;
@@ -65,21 +65,14 @@ int main(void)
 		checksum = read_word();
 		fprintf(stderr, "checksum = (%04x)\n", checksum);
 
-		p = malloc(size);
-		if (p == NULL) {
-			fprintf(stderr, "malloc: out of memory\n");
-			return 1;
-		}
-
 		fprintf(stderr, "Reading data\n");
 		sum = 0;
 		for (i = 0; i < size; i++) {
-			p[i] = read_octet(DATA_ACK);
-			sum += p[i];
+			packet_buf[i] = read_octet(DATA_ACK);
+			sum += packet_buf[i];
 		}
 
-		fwrite(p, 1, size, fout);
-		free(p);
+		fwrite(packet_buf, 1, size, fout);
 
 		if (sum != checksum) {
 			fprintf(stderr, "WARNING: checksum mismatch - expected %x, got %x\n",
