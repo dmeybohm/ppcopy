@@ -6,7 +6,7 @@
 
 #include "ppcopy.h"
 
-#define BLOCK_SIZE	32768
+#define BLOCK_SIZE	32767
 
 static unsigned char write_ackd(unsigned char data, unsigned char clock)
 {

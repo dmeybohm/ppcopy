@@ -8,7 +8,7 @@
 %define META_ACK	0x1
 %define DATA_ACK	0x2
 
-%define BLOCK_SIZE	32768
+%define BLOCK_SIZE	32767
 
 ;
 ; Turn these off for smaller code,
