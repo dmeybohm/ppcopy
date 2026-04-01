@@ -18,14 +18,6 @@
 %endif
 %define CLOSE_FILE	0
 
-;
-; This might make for more correct operation,
-; but it makes the transfer so slow that
-; it's not worth doing
-;
-;%define uSLEEP		out 0x80,al
-%define uSLEEP
-
 ; Used for ``readability'' only
 %define PTR(x)		x
 %define SYM(x)		x
@@ -214,7 +206,6 @@ exit:
 .redo:
 	in al,dx
 	mov cl,al	; cl = first value read
-	uSLEEP
 	and al,0x80
 	xor al,ch
 	jz .redo
