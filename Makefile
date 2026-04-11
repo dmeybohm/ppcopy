@@ -5,13 +5,15 @@ CC = gcc
 CFLAGS = -g -Wall -O2
 CC32 = gcc
 CFLAGS32 = -g -Wall -O2 -m32 -static
+CC_MUSL = musl-gcc
+CFLAGS_MUSL = -g -Wall -O2 -static
 AS = nasm
 ASFLAGS = -fbin
 
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
 
-.PHONY: all linux linux-i386 dos clean download-images download-freedos download-alpine download-qemu update-floppies test
+.PHONY: all linux linux-i386 linux-musl dos clean download-images download-freedos download-alpine download-qemu update-floppies test
 
 # Default target - build everything
 all: ppread ppwrite ppread.com ppwrite.com
@@ -57,6 +59,24 @@ ppwrite-i386.o: ppwrite.c ppcopy.h
 
 ppwrite-i386: ppwrite-i386.o ppcopy-i386.o
 	$(CC32) $(CFLAGS32) -o $@ $^
+
+# Statically linked Linux programs (musl)
+linux-musl: ppread-musl ppwrite-musl
+
+ppcopy-musl.o: ppcopy.c ppcopy.h
+	$(CC_MUSL) $(CFLAGS_MUSL) -c -o $@ $<
+
+ppread-musl.o: ppread.c ppcopy.h
+	$(CC_MUSL) $(CFLAGS_MUSL) -c -o $@ $<
+
+ppread-musl: ppread-musl.o ppcopy-musl.o
+	$(CC_MUSL) $(CFLAGS_MUSL) -o $@ $^
+
+ppwrite-musl.o: ppwrite.c ppcopy.h
+	$(CC_MUSL) $(CFLAGS_MUSL) -c -o $@ $<
+
+ppwrite-musl: ppwrite-musl.o ppcopy-musl.o
+	$(CC_MUSL) $(CFLAGS_MUSL) -o $@ $^
 
 # DOS assembly programs
 ppread.com: ppread.nasm
@@ -104,4 +124,5 @@ test: dos linux-i386
 clean:
 	rm -f ppread ppread.o ppwrite ppwrite.o ppcopy.o ppread.com ppwrite.com \
 		ppcopy-i386.o ppread-i386.o ppread-i386 ppwrite-i386.o ppwrite-i386 \
-		ppread-i386.stripped ppwrite-i386.stripped
+		ppread-i386.stripped ppwrite-i386.stripped \
+		ppcopy-musl.o ppread-musl.o ppread-musl ppwrite-musl.o ppwrite-musl
