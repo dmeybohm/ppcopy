@@ -18,14 +18,6 @@
 %endif
 %define CLOSE_FILE	0
 
-;
-; This might make for more correct operation,
-; but it makes the transfer so slow that
-; it's not worth doing
-;
-;%define uSLEEP		out 0x80,al
-%define uSLEEP
-
 ; Used for ``readability'' only
 %define PTR(x)		x
 %define SYM(x)		x
@@ -92,13 +84,9 @@
 ;
 ; This is the main routine.
 ;
-; It copies chunks, sized < 64k, of a file at a time.  
-; Chunk sizes too close to 64k will cause unpredictable errors.  
-;
-; This could be fixed, but as its a borderline case 
-;     (62k should be fine), and as it doesn't really prevent 
-;     large files from being transfered, fixing it is probably not worth 
-;     the added time/complexity.
+; It copies chunks of a file at a time.  Chunk sizes are treated as
+; signed 16-bit values; sizes <= 0 signal end of transfer.  Max chunk
+; size is 32,767 bytes.
 ;
 start:
 	mov dx,PTR(output_file)
@@ -137,7 +125,8 @@ start_read:
 recv_size:
 	call read_word
 	xchg cx,ax			; remember to preserve size in cx
-	jcxz close_file
+	test cx,cx
+	jle close_file
 	DPRINT size_str
 
 recv_checksum:
@@ -217,7 +206,6 @@ exit:
 .redo:
 	in al,dx
 	mov cl,al	; cl = first value read
-	uSLEEP
 	and al,0x80
 	xor al,ch
 	jz .redo

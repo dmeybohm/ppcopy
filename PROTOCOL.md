@@ -79,7 +79,7 @@ state when it begins sending.
 
 ### Chunk Structure
 
-Each chunk carries up to ~62 KB of data (must be less than 64 KB):
+Each chunk carries up to 32,767 bytes of data:
 
 ```
 Size                       1 word (big-endian)
@@ -87,7 +87,9 @@ Checksum                   1 word (big-endian)
 Data                       `size` octets
 ```
 
-- **Size**: Number of data bytes in this chunk (0 means end of file).
+- **Size**: Signed 16-bit number of data bytes in this chunk. Values
+  <= 0 signal end of transfer (0 is normal EOF; negative values are
+  invalid). Max chunk size is 32,767 bytes.
 - **Checksum**: Simple additive sum of all data bytes in the chunk
   (unsigned 16-bit, wrapping).
 - **Data**: The raw file contents for this chunk.
@@ -100,12 +102,12 @@ For files larger than one chunk:
 [ppcopy] [Size₁] [Checksum₁] [Data₁...]
          [Size₂] [Checksum₂] [Data₂...]
          ...
-         [0x0000]  <- size of zero signals EOF
+         [0x0000]  <- size <= 0 signals EOF
 ```
 
 The start sequence is only sent once at the beginning. Subsequent chunks
-follow immediately after the previous chunk's data. A size of zero
-indicates the transfer is complete.
+follow immediately after the previous chunk's data. A size of zero (or
+any negative value) indicates the transfer is complete.
 
 ### Checksum Verification
 

@@ -34,7 +34,7 @@ static unsigned short read_word(void)
 
 int main(void)
 {
-	static unsigned char packet_buf[65536];
+	static unsigned char packet_buf[32767];
 	unsigned short checksum, size;
 	unsigned short sum, i;
 	FILE *fout;
@@ -58,8 +58,11 @@ int main(void)
 
 	while (1) {
 		size = read_word();
-		if (size == 0)
+		if (size == 0 || size > 0x7FFF) {
+			if (size != 0)
+				fprintf(stderr, "WARNING: invalid chunk size 0x%04x\n", size);
 			break;
+		}
 		fprintf(stderr, "size = (%05d)\n", size);
 
 		checksum = read_word();

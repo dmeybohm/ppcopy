@@ -8,7 +8,7 @@
 %define META_ACK	0x1
 %define DATA_ACK	0x2
 
-%define BLOCK_SIZE	32768
+%define BLOCK_SIZE	32767
 
 ;
 ; Turn these off for smaller code,
@@ -17,14 +17,6 @@
 %ifndef DEBUG
 %define DEBUG		0	; 0, 1, or 2 (can be overridden from command line)
 %endif
-
-;
-; This might make for more correct operation,
-; but it makes the transfer so slow that
-; it's not worth doing
-;
-;%define uSLEEP		out 0x80,al
-%define uSLEEP
 
 ; Used for ``readability'' only
 %define PTR(x)		x
@@ -102,7 +94,6 @@
 %%redo:
 	in al,dx		; read raw from status port
 	mov cl,al		; save raw for stability check
-	uSLEEP
 	shr al,3		; shift right 3
 	mov ch,al		; save shifted value
 	and al,0x10		; isolate clock bit (bit 4)
