@@ -3,6 +3,8 @@ ppread
 ppwrite
 ppread-i386
 ppwrite-i386
+ppread-musl
+ppwrite-musl
 
 # Build artifacts - DOS binaries
 *.com
