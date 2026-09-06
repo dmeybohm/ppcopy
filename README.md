@@ -27,6 +27,7 @@ You can build specific targets:
 ```sh
 make linux       # Build only Linux programs (ppread, ppwrite)
 make linux-i386  # Build 32-bit statically linked Linux programs (ppread-i386, ppwrite-i386)
+make linux-x64   # Build 64-bit statically linked Linux programs (ppread-x64, ppwrite-x64; needs musl-gcc)
 make dos         # Build only DOS programs (ppread.com, ppwrite.com)
 ```
 
@@ -43,6 +44,18 @@ make ppwrite.com DEBUG=2  # Verbose debugging
 ```
 
 The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
+
+## Making a release
+
+```sh
+./make-release.sh [VERSION]
+```
+
+This builds the DOS programs plus static Linux binaries for i386 and x86-64,
+strips them, and bundles them with the docs into `dist/ppcopy-VERSION.tar.gz`
+and `.zip` with a SHA-256 checksum file. `VERSION` defaults to `git describe`.
+It needs `nasm`, `gcc-multilib` (for `linux-i386`) and `musl-tools` (for
+`linux-x64`).
 
 ## Testing
 
