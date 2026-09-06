@@ -3,8 +3,8 @@ ppread
 ppwrite
 ppread-i386
 ppwrite-i386
-ppread-musl
-ppwrite-musl
+ppread-x64
+ppwrite-x64
 
 # Build artifacts - DOS binaries
 *.com
@@ -31,3 +31,6 @@ tests/tmp/
 .vscode/
 .idea/
 *.sublime-*
+
+# Release artifacts
+dist/
