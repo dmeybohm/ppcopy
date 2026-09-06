@@ -21,6 +21,9 @@ ppwrite-x64
 qemu-device/images/
 qemu
 
+# 32-bit musl toolchain (see build-musl-i386.sh)
+musl-i386/
+
 # Test artifacts
 tests/tmp/
 

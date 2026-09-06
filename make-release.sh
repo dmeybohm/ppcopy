@@ -7,7 +7,8 @@
 # Usage: ./make-release.sh [VERSION]
 #   VERSION defaults to `git describe --tags --always`.
 #
-# Requirements: nasm, gcc-multilib (for -i386), musl-tools (for -x64).
+# Requirements: nasm, musl-tools (for -x64), and the 32-bit musl
+# toolchain from ./build-musl-i386.sh (for -i386).
 
 set -eu
 
@@ -20,6 +21,7 @@ STAGE="$DIST/$NAME"
 
 echo "Building $NAME"
 
+make check-release-toolchain
 make clean
 make dos linux-i386 linux-x64
 
