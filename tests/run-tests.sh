@@ -327,9 +327,9 @@ test_linux_to_dos() {
     local initrd="$test_dir/initrd.img"
     prepare_linux_initrd "$initrd" "writer" "$testdata"
 
-    # Prepare DOS reader: floppy boots, runs PPREAD.COM (writes to C:\PPREAD.OUT)
+    # Prepare DOS reader: floppy boots, runs PPREAD.COM with stdout redirected to C:\PPREAD.OUT
     local floppy="$test_dir/boot.img"
-    prepare_dos_boot_floppy "$floppy" "C:\PPREAD.COM"
+    prepare_dos_boot_floppy "$floppy" "C:\PPREAD.COM > C:\PPREAD.OUT"
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
@@ -390,7 +390,7 @@ test_dos_to_dos() {
 
     # Prepare DOS reader
     local reader_floppy="$test_dir/reader-boot.img"
-    prepare_dos_boot_floppy "$reader_floppy" "C:\PPREAD.COM"
+    prepare_dos_boot_floppy "$reader_floppy" "C:\PPREAD.COM > C:\PPREAD.OUT"
 
     local reader_hdd="$test_dir/reader-hdd.img"
     prepare_dos_hdd "$reader_hdd" \
