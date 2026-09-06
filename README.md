@@ -35,9 +35,9 @@ make dos         # Build only DOS programs (ppread.com, ppwrite.com)
 The DOS assembly programs support different debug levels:
 
 ```sh
-make ppread.com DEBUG=0   # Minimal size (188 bytes, default)
-make ppread.com DEBUG=1   # With error messages (287 bytes)
-make ppread.com DEBUG=2   # Verbose debugging (571 bytes)
+make ppread.com DEBUG=0   # Minimal size (190 bytes, default)
+make ppread.com DEBUG=1   # With error messages (289 bytes)
+make ppread.com DEBUG=2   # Verbose debugging (522 bytes)
 
 make ppwrite.com DEBUG=0  # Minimal size (default)
 make ppwrite.com DEBUG=1  # With error messages
@@ -128,10 +128,15 @@ Connect a LapLink cable between the Linux computer and the DOS machine. Run
 `ppwrite` on the Linux computer, and on the DOS computer run
 
 ```cmd
-ppread
+ppread > output
 ```
 
-The output will be placed in `C:\ppread.out`.
+Replacing `output` with whatever file you want to copy to. `ppread.com`
+writes the received data to standard output, just like the Linux version,
+so it must be redirected to a file. Error and debug messages (in the
+`DEBUG=1` and `DEBUG=2` builds) go directly to the screen and never end up
+in the output file. The errorlevel is 1 if anything went wrong, including
+running out of disk space.
 
 #### Sending files from DOS
 

@@ -1,11 +1,15 @@
 ;
 ; ppread.nasm -- Copy files through through a parallel port connected
-;                   with a laplink cable in DOS/DOSEMU/FreeDOS 
-;                 Top speed may be ~14k/sec. 
+;                   with a laplink cable in DOS/DOSEMU/FreeDOS
+;                 Top speed may be ~14k/sec.
+;
+; Received data is written to stdout (DOS handle 1), so redirect it:
+;
+;	ppread > file
 ;
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
-%define OUTPUT_FILE	'C:\ppread.out'
+%define STDOUT		1
 
 %define META_ACK	0x1
 
@@ -53,16 +57,6 @@
 	%endif
 %endmacro
 
-%macro PRINT_SUCCESS 1
-	%if (DEBUG > 0)
-		PRINT_INFO %1 
-	%else
-		mov dx,PTR(%1)
-		mov ah,0x09
-		int 0x21
-	%endif
-%endmacro
-
 %macro PRINT_INFO 1
 	%if (DEBUG > 0)
 		mov dx,PTR(%1)
@@ -89,12 +83,8 @@
 ; size is 32,767 bytes.
 ;
 start:
-	mov dx,PTR(output_file)
-	mov ah,0x3c 			; DOS create file interrupt
-	xor cx,cx 			; attrib-flags
-	int 0x21
-	DIE_IF c,SYM(open_err_str)
-	xchg bx,ax			; Store file-ptr in bx
+	mov ax,STDOUT			; start with 0xb8 so file(1) detects COM
+	xchg bx,ax			; output handle, kept in bx throughout
 	cld
 
 	; Initialize port so writer sees a known state
@@ -158,25 +148,27 @@ do_checksum:
 	DPRINT good_checksum_str 
 
 write_file:
-	DPRINT writing_str 
+	DPRINT writing_str
 	mov dx,block			; ds:dx points to block to write
 	mov ah,0x40			; DOS write-block function
 	int 0x21			; bx stills hold file-handle
 	DIE_IF c,SYM(write_err_str)	; a set carry-flag indicates error
-	sub cx,ax
-	jnz write_file			; keep going if anything left to write
+	cmp ax,cx			; DOS only writes short when the disk
+	DIE_IF ne,SYM(write_err_str)	;   is full, and reports that with
+					;   carry clear, so treat it as fatal
 	JMP_IF z,SYM(start_read)	; smaller than absolute jmp
 	DPRINT not_restarting_str
 
 %if CLOSE_FILE == 1
 close_file:
 	mov ah,0x3e			; bx still contains file handle
-	int 0x21			; DOS close file handle fn
-	DIE_IF c,SYM(close_err_str)
+	int 0x21			; DOS close file handle fn: flushes
+	DIE_IF c,SYM(close_err_str)	;   and updates the directory entry
+					;   even though COMMAND.COM still holds
+					;   a reference to a redirected stdout
 %else
 close_file:				; DOS closes the handle on exit, but
 %endif					;   any error doing so goes unreported
-	PRINT_SUCCESS wrote_str
 	mov ax,0x4c00			; DOS exit with errorlevel 0
 	int 0x21
 
@@ -326,10 +318,21 @@ print_err_and_exit:
 	mov ax,0x4c01		; DOS exit with errorlevel 1
 	int 0x21
 
+; Print the '$'-terminated string at ds:dx to the console.  Uses int 0x29
+; (fast console output) rather than int 0x21/ah=0x09 so that debug output
+; goes to the screen instead of into a redirected stdout.
 print_info:
 	push ax
-	mov ah,0x09		; print string at ds:dx
-	int 0x21
+	push si
+	mov si,dx
+.next:
+	lodsb
+	cmp al,'$'
+	je .done
+	int 0x29
+	jmp .next
+.done:
+	pop si
 %if (DEBUG > 1)
 	mov ah,0x0e
 	mov al,':'
@@ -345,17 +348,8 @@ print_info:
 
 %endif ; (DEBUG > 0)
 
-wrote_str:		db 'wrote ', ; ``fallthrough''
-output_file:		db OUTPUT_FILE,0
-%if (DEBUG > 0)        
-                        db '$'
-%else
-			db 10,13,'$' ; no crlf printing code unless debug
-%endif
-			
 %if (DEBUG > 0)
 ; Strings printed by DIE_IF
-open_err_str:		db 'open','$'
 reading_data_str:	db 'reading','$'
 checksum_err_str:	db 'bad checksum','$'
 write_err_str:		db 'write','$'
