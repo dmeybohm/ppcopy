@@ -8,8 +8,9 @@
 #
 # Requirements: gcc-multilib, wget, make.
 #
-# The installed toolchain embeds absolute paths, so if the checkout is moved,
-# rerun this script: it rewrites the paths without rebuilding.
+# The installed wrapper and specs file contain no absolute paths: the
+# wrapper exports its own location and the specs file reads it from the
+# environment, so the checkout can be moved freely.
 
 set -eu
 
@@ -25,12 +26,6 @@ TARBALL="$WORK_DIR/musl-$MUSL_VERSION.tar.gz"
 SRC_DIR="$WORK_DIR/musl-$MUSL_VERSION"
 
 if [ -x "$PREFIX/bin/musl-gcc" ]; then
-    # Relocate if the checkout has moved since the toolchain was built.
-    OLD_PREFIX=$(sed -n 's|.*-specs "\(.*\)/lib/musl-gcc.specs".*|\1|p' "$PREFIX/bin/musl-gcc")
-    if [ -n "$OLD_PREFIX" ] && [ "$OLD_PREFIX" != "$PREFIX" ]; then
-        echo "Checkout moved from $OLD_PREFIX; updating toolchain paths..."
-        sed -i "s|$OLD_PREFIX|$PREFIX|g" "$PREFIX/bin/musl-gcc" "$PREFIX/lib/musl-gcc.specs"
-    fi
     echo "musl i386 toolchain already built at $PREFIX, skipping."
     echo "Remove $WORK_DIR to rebuild."
     exit 0
@@ -55,18 +50,55 @@ cd "$SRC_DIR"
 make -j"$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
 make install
 
-# musl's specs file replaces gcc's link spec, losing the "-m elf_i386" that
-# -m32 would normally add, so the linker would default to x86-64. Put it back.
-sed -i 's|^\*link:$|&\n-m elf_i386|' "$PREFIX/lib/musl-gcc.specs"
-sed -i '/^\*link:$/{n;N;s|\n| |}' "$PREFIX/lib/musl-gcc.specs"
-
-# musl's generated wrapper embeds "gcc -m32" as a single command name, which
-# exec can't resolve. Replace it with one that passes -m32 as an argument.
-cat > "$PREFIX/bin/musl-gcc" <<WRAPPER
+# Replace musl's generated wrapper and specs file. The generated ones embed
+# the absolute install prefix, and the wrapper embeds "gcc -m32" as a single
+# command name that exec can't resolve. This wrapper locates itself and
+# exports the prefix; the specs file pulls paths from that variable via
+# %:getenv, so nothing on disk is tied to the install location. The specs
+# file also adds "-m elf_i386", which musl's link spec drops when it
+# replaces gcc's own, leaving the linker defaulting to x86-64.
+cat > "$PREFIX/bin/musl-gcc" <<'WRAPPER'
 #!/bin/sh
-exec "\${REALGCC:-gcc}" -m32 "\$@" -specs "$PREFIX/lib/musl-gcc.specs"
+MUSL_I386_PREFIX=$(cd "$(dirname "$0")/.." && pwd)
+export MUSL_I386_PREFIX
+exec "${REALGCC:-gcc}" -m32 "$@" -specs "$MUSL_I386_PREFIX/lib/musl-gcc.specs"
 WRAPPER
 chmod +x "$PREFIX/bin/musl-gcc"
+
+cat > "$PREFIX/lib/musl-gcc.specs" <<'SPECS'
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem %:getenv(MUSL_I386_PREFIX /include) -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem %:getenv(MUSL_I386_PREFIX /include) -isystem include%s
+
+*link_libgcc:
+-L%:getenv(MUSL_I386_PREFIX /lib) -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{shared:;static-pie:%:getenv(MUSL_I386_PREFIX /lib/rcrt1.o); :%:getenv(MUSL_I386_PREFIX /lib/Scrt1.o)} %:getenv(MUSL_I386_PREFIX /lib/crti.o) crtbeginS.o%s
+
+*endfile:
+crtendS.o%s %:getenv(MUSL_I386_PREFIX /lib/crtn.o)
+
+*link:
+-m elf_i386 -dynamic-linker /lib/ld-musl-i386.so.1 -nostdlib %{shared:-shared} %{static:-static} %{static-pie:-static -pie --no-dynamic-linker} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+SPECS
 
 echo
 echo "Installed to $PREFIX"
