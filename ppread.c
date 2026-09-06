@@ -58,10 +58,11 @@ int main(void)
 
 	while (1) {
 		size = read_word();
-		if (size == 0 || size > 0x7FFF) {
-			if (size != 0)
-				fprintf(stderr, "WARNING: invalid chunk size 0x%04x\n", size);
+		if (size == 0)
 			break;
+		if (size > 0x7FFF) {
+			fprintf(stderr, "error: invalid chunk size 0x%04x\n", size);
+			exit(1);
 		}
 		fprintf(stderr, "size = (%05d)\n", size);
 
@@ -75,14 +76,22 @@ int main(void)
 			sum += packet_buf[i];
 		}
 
-		fwrite(packet_buf, 1, size, fout);
-
+		/* verify before writing so a corrupt chunk never reaches the output */
 		if (sum != checksum) {
-			fprintf(stderr, "WARNING: checksum mismatch - expected %x, got %x\n",
+			fprintf(stderr, "error: checksum mismatch - expected %x, got %x\n",
 				checksum, sum);
+			exit(1);
+		}
+
+		if (fwrite(packet_buf, 1, size, fout) != size) {
+			perror("fwrite");
+			exit(1);
 		}
 	}
 
-	fclose(fout);
+	if (fclose(fout) != 0) {
+		perror("fclose");
+		exit(1);
+	}
 	return 0;
 }

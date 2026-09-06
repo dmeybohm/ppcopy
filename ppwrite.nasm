@@ -232,10 +232,14 @@ send_terminator:
 	int 0x21		; BX = handle
 
 	PRINT_SUCCESS sent_str
+	mov ax,0x4c00		; DOS exit with errorlevel 0
+	int 0x21
 
+; Error exit.  DIE_IF jumps here when DEBUG == 0; debug builds go through
+; print_err_and_exit instead.
 exit:
-	mov ah,0x4c		; DOS exit fn
-	int 0x21		;   with return code in %al
+	mov ax,0x4c01		; DOS exit with errorlevel 1
+	int 0x21
 
 ; I/O routines
 ;

@@ -16,7 +16,7 @@
 %ifndef DEBUG
 %define DEBUG		0	; 0, 1, or 2 (can be overridden from command line)
 %endif
-%define CLOSE_FILE	0
+%define CLOSE_FILE	1
 
 ; Used for ``readability'' only
 %define PTR(x)		x
@@ -173,17 +173,18 @@ close_file:
 	mov ah,0x3e			; bx still contains file handle
 	int 0x21			; DOS close file handle fn
 	DIE_IF c,SYM(close_err_str)
-	PRINT_SUCCESS wrote_str
-exit:
-	mov ax,0x4c00			; DOS exit with errorlevel 0
-	int 0x21
 %else
-close_file:
-exit:
+close_file:				; DOS closes the handle on exit, but
+%endif					;   any error doing so goes unreported
 	PRINT_SUCCESS wrote_str
 	mov ax,0x4c00			; DOS exit with errorlevel 0
 	int 0x21
-%endif
+
+; Error exit.  DIE_IF jumps here when DEBUG == 0; debug builds go through
+; print_err_and_exit instead.
+exit:
+	mov ax,0x4c01			; DOS exit with errorlevel 1
+	int 0x21
 
 
 ; For the following routines:
