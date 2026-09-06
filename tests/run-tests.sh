@@ -118,10 +118,38 @@ prepare_dos_boot_floppy() {
     cp "$FREEDOS_IMG" "$floppy"
     # Delete existing FDAUTO.BAT and replace with our test script
     mdel -i "$floppy" ::FDAUTO.BAT 2>/dev/null || true
-    # Write new FDAUTO.BAT: run the test command, then power off
+    # Write new FDAUTO.BAT: run the test command, record its errorlevel
+    # in C:\RESULT.TXT (checked by check_dos_result), then power off
     local tmpbat="$TMP_DIR/FDAUTO.BAT"
-    printf '%s\r\n%s\r\n' "$test_command" '\FREEDOS\BIN\FDAPM POWEROFF' > "$tmpbat"
+    printf '%s\r\n' \
+        "$test_command" \
+        'IF ERRORLEVEL 1 GOTO FAIL' \
+        'ECHO OK>C:\RESULT.TXT' \
+        'GOTO DONE' \
+        ':FAIL' \
+        'ECHO FAIL>C:\RESULT.TXT' \
+        ':DONE' \
+        '\FREEDOS\BIN\FDAPM POWEROFF' > "$tmpbat"
     mcopy -i "$floppy" "$tmpbat" ::FDAUTO.BAT
+}
+
+# check_dos_result HDD LABEL [EXPECTED]
+# Verify the errorlevel recorded by FDAUTO.BAT on the DOS side.
+# EXPECTED is OK (default) or FAIL.  Prints a FAIL message on mismatch.
+check_dos_result() {
+    local hdd="$1" label="$2" expected="${3:-OK}"
+    local result actual
+    result=$(mktemp "$TMP_DIR/result.XXXXXX")
+    if ! mcopy -i "$hdd" ::RESULT.TXT "$result" 2>/dev/null; then
+        echo "FAIL ($label: RESULT.TXT not found on HDD)"
+        return 1
+    fi
+    actual=$(tr -d '\r\n' < "$result")
+    if [ "$actual" != "$expected" ]; then
+        echo "FAIL ($label errorlevel: got '$actual', expected '$expected')"
+        return 1
+    fi
+    return 0
 }
 
 # ─── DOS auxiliary HDD preparation ──────────────────────────────────────────
@@ -267,6 +295,7 @@ test_dos_to_linux() {
     fi
 
     # Verify
+    check_dos_result "$hdd" "DOS writer" || return 1
     if grep -q "PPCOPY_TEST_PASSED" "$log" 2>/dev/null; then
         echo "PASS"
         return 0
@@ -321,6 +350,7 @@ test_linux_to_dos() {
     fi
 
     # Extract PPREAD.OUT from HDD and compare
+    check_dos_result "$hdd" "DOS reader" || return 1
     local received="$test_dir/received.bin"
     if mcopy -i "$hdd" ::PPREAD.OUT "$received" 2>/dev/null; then
         if cmp -s "$testdata" "$received"; then
@@ -378,6 +408,8 @@ test_dos_to_dos() {
     fi
 
     # Extract PPREAD.OUT from reader HDD and compare
+    check_dos_result "$writer_hdd" "DOS writer" || return 1
+    check_dos_result "$reader_hdd" "DOS reader" || return 1
     local received="$test_dir/received.bin"
     if mcopy -i "$reader_hdd" ::PPREAD.OUT "$received" 2>/dev/null; then
         if cmp -s "$testdata" "$received"; then
@@ -446,6 +478,37 @@ test_linux_to_linux() {
     fi
 }
 
+# DOS writer with a missing input file: must exit with errorlevel 1.
+# ppwrite opens the file before touching the port, so no peer VM is needed.
+# This also proves the RESULT.TXT plumbing can actually report a failure.
+test_dos_missing_file() {
+    local test_id="$1"
+    local test_dir="$TMP_DIR/test${test_id}"
+    mkdir -p "$test_dir"
+
+    local state="$test_dir/laplink.state"
+    truncate -s 2 "$state"
+
+    local floppy="$test_dir/boot.img"
+    prepare_dos_boot_floppy "$floppy" "C:\PPWRITE.COM C:\NOSUCH.TXT"
+
+    local hdd="$test_dir/hdd.img"
+    prepare_dos_hdd "$hdd" \
+        "$PROJECT_DIR/ppwrite.com:PPWRITE.COM"
+
+    launch_dos_vm 0 "$state" "$floppy" "$hdd"
+    local dos_pid=${QEMU_PIDS[-1]}
+
+    if ! wait_with_timeout "$dos_pid" "$dos_pid" "$TIMEOUT_SMALL"; then
+        echo "FAIL (timeout)"
+        return 1
+    fi
+
+    check_dos_result "$hdd" "DOS writer" FAIL || return 1
+    echo "PASS"
+    return 0
+}
+
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 echo "ppcopy integration tests"
@@ -470,7 +533,7 @@ TESTDATA_LARGE="$TMP_DIR/testdata-large.txt"
 generate_large_testdata "$TESTDATA_LARGE"
 
 # Run tests
-TOTAL_TESTS=8
+TOTAL_TESTS=9
 
 run_test() {
     local num="$1" label="$2" func="$3"
@@ -496,6 +559,7 @@ run_test 5 "DOS → Linux (large)"   test_dos_to_linux   "$TESTDATA_LARGE" 5
 run_test 6 "Linux → DOS (large)"   test_linux_to_dos   "$TESTDATA_LARGE" 6
 run_test 7 "DOS → DOS (large)"     test_dos_to_dos     "$TESTDATA_LARGE" 7
 run_test 8 "Linux → Linux (large)" test_linux_to_linux "$TESTDATA_LARGE" 8
+run_test 9 "DOS missing file errorlevel" test_dos_missing_file 9
 
 echo ""
 if [ "$TESTS_FAILED" -eq 0 ]; then
