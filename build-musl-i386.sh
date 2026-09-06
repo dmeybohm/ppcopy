@@ -6,7 +6,10 @@
 # is installed under musl-i386/install in the project directory; the
 # Makefile picks it up automatically for the linux-i386 target.
 #
-# Requirements: gcc-multilib, curl, make.
+# Requirements: gcc-multilib, wget, make.
+#
+# The installed toolchain embeds absolute paths, so if the checkout is moved,
+# rerun this script: it rewrites the paths without rebuilding.
 
 set -eu
 
@@ -22,6 +25,12 @@ TARBALL="$WORK_DIR/musl-$MUSL_VERSION.tar.gz"
 SRC_DIR="$WORK_DIR/musl-$MUSL_VERSION"
 
 if [ -x "$PREFIX/bin/musl-gcc" ]; then
+    # Relocate if the checkout has moved since the toolchain was built.
+    OLD_PREFIX=$(sed -n 's|.*-specs "\(.*\)/lib/musl-gcc.specs".*|\1|p' "$PREFIX/bin/musl-gcc")
+    if [ -n "$OLD_PREFIX" ] && [ "$OLD_PREFIX" != "$PREFIX" ]; then
+        echo "Checkout moved from $OLD_PREFIX; updating toolchain paths..."
+        sed -i "s|$OLD_PREFIX|$PREFIX|g" "$PREFIX/bin/musl-gcc" "$PREFIX/lib/musl-gcc.specs"
+    fi
     echo "musl i386 toolchain already built at $PREFIX, skipping."
     echo "Remove $WORK_DIR to rebuild."
     exit 0
@@ -31,7 +40,7 @@ mkdir -p "$WORK_DIR"
 
 if [ ! -f "$TARBALL" ]; then
     echo "Downloading musl $MUSL_VERSION..."
-    curl -fSL -o "$TARBALL" "$MUSL_URL"
+    wget -O "$TARBALL" "$MUSL_URL"
 fi
 
 echo "$MUSL_SHA256  $TARBALL" | sha256sum -c -
@@ -43,7 +52,7 @@ echo "Building musl $MUSL_VERSION for i386..."
 cd "$SRC_DIR"
 ./configure --prefix="$PREFIX" --target=i386 --disable-shared \
     CC="gcc -m32" AR=ar RANLIB=ranlib
-make -j"$(nproc)"
+make -j"$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
 make install
 
 # musl's specs file replaces gcc's link spec, losing the "-m elf_i386" that

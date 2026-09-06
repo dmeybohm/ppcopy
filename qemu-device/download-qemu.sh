@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# Clone a pinned QEMU commit, add the LapLink device, and build only the
+# i386 system emulator into qemu/install.
+#
+# Requirements: git, python3, ninja, pkg-config, glib and pixman development
+# headers (Debian/Ubuntu: ninja-build libglib2.0-dev libpixman-1-dev).
+#
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -43,6 +50,7 @@ echo "Configuring QEMU (i386-softmmu only, minimal features)..."
 mkdir -p "$QEMU_DIR/build"
 cd "$QEMU_DIR/build"
 ../configure --target-list=i386-softmmu \
+    --prefix=/usr/local \
     --without-default-features \
     --enable-tcg
 

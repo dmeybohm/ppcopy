@@ -2,11 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+QEMU="${QEMU:-$SCRIPT_DIR/../qemu/install/bin/qemu-system-i386}"
 
 CDROM="$SCRIPT_DIR/images/FD14LIVE.iso"
 FLOPPY=""
 SIDE=0
-STATEFILE="/tmp/laplink.state"
+STATEFILE="${TMPDIR:-/tmp}/laplink.state"
 MEMORY=32
 
 usage() {
@@ -18,9 +19,11 @@ usage() {
     echo "  -c <cdrom>      CD-ROM ISO (default: images/FD14LIVE.iso)"
     echo "  -f <floppy>     Floppy image (default: ppcopy-dos.img or ppcopy-dos2.img based on side)"
     echo "  -s <side>       LapLink cable side, 0 or 1 (default: 0)"
-    echo "  -S <statefile>  Shared state file path (default: /tmp/laplink.state)"
+    echo "  -S <statefile>  Shared state file path (default: \$TMPDIR/laplink.state)"
     echo "  -m <memory>     RAM in MB (default: 32)"
     echo "  -h              Show this help"
+    echo
+    echo "Set QEMU to override the qemu-system-i386 binary (default: qemu/install/bin)."
 }
 
 while getopts "c:f:s:S:m:h" opt; do
@@ -47,7 +50,7 @@ if [ ! -f "$STATEFILE" ]; then
     truncate -s 2 "$STATEFILE"
 fi
 
-"$SCRIPT_DIR/../qemu/build/qemu-system-i386" \
+"$QEMU" \
     -m "$MEMORY" \
     -boot d \
     -cdrom "$CDROM" \
