@@ -27,6 +27,7 @@ You can build specific targets:
 ```sh
 make linux       # Build only Linux programs (ppread, ppwrite)
 make linux-i386  # Build 32-bit statically linked Linux programs (ppread-i386, ppwrite-i386)
+make build-musl-i386  # Build a 32-bit musl toolchain so linux-i386 produces small binaries
 make linux-x64   # Build 64-bit statically linked Linux programs (ppread-x64, ppwrite-x64; needs musl-gcc)
 make dos         # Build only DOS programs (ppread.com, ppwrite.com)
 ```
@@ -54,8 +55,18 @@ The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
 This builds the DOS programs plus static Linux binaries for i386 and x86-64,
 strips them, and bundles them with the docs into `dist/ppcopy-VERSION.tar.gz`
 and `.zip` with a SHA-256 checksum file. `VERSION` defaults to `git describe`.
-It needs `nasm`, `gcc-multilib` (for `linux-i386`) and `musl-tools` (for
-`linux-x64`).
+It needs `nasm`, `musl-tools` (for `linux-x64`), and the 32-bit musl toolchain
+for `linux-i386`. Ubuntu only packages musl for x86_64, so build the 32-bit one
+from source once with:
+
+```sh
+make build-musl-i386
+```
+
+This needs `gcc-multilib` and installs into `musl-i386/` inside the project.
+Without it, `linux-i386` still builds but links glibc, which makes the
+binaries about twenty times larger; `make-release.sh` refuses to run in that
+case.
 
 ## Testing
 
@@ -71,7 +82,7 @@ DOS and Linux senders/receivers, with both small and large files.
 ### Test Requirements
 
 - **QEMU** (built from the `qemu/` submodule — see [qemu-device/README.md](qemu-device/README.md))
-- **32-bit GCC libraries** (for building `linux-i386` static binaries)
+- **gcc-multilib** (for building `linux-i386` static binaries, with or without the musl toolchain)
 
 ## Usage
 

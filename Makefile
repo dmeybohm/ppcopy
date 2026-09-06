@@ -3,7 +3,14 @@
 # Compiler and assembler settings
 CC = gcc
 CFLAGS = -g -Wall -O2
+# 32-bit builds use musl when it has been built (see build-musl-i386.sh),
+# otherwise fall back to static glibc via gcc -m32.
+MUSL_I386 ?= $(CURDIR)/musl-i386/install
+ifneq ($(wildcard $(MUSL_I386)/bin/musl-gcc),)
+CC32 = $(MUSL_I386)/bin/musl-gcc
+else
 CC32 = gcc
+endif
 CFLAGS32 = -g -Wall -O2 -m32 -static
 CC_X64 = musl-gcc
 CFLAGS_X64 = -g -Wall -O2 -static
@@ -13,7 +20,7 @@ ASFLAGS = -fbin
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
 
-.PHONY: all linux linux-i386 linux-x64 dos clean download-images download-freedos download-alpine download-qemu update-floppies test
+.PHONY: all linux linux-i386 linux-x64 dos clean build-musl-i386 check-release-toolchain download-images download-freedos download-alpine download-qemu update-floppies test
 
 # Default target - build everything
 all: ppread ppwrite ppread.com ppwrite.com
@@ -84,6 +91,17 @@ ppread.com: ppread.nasm
 
 ppwrite.com: ppwrite.nasm
 	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
+
+# Build the 32-bit musl toolchain used by linux-i386
+build-musl-i386:
+	./build-musl-i386.sh
+
+# Fail unless linux-i386 will be built against musl (used by make-release.sh)
+check-release-toolchain:
+	@case '$(CC32)' in \
+		*musl*) ;; \
+		*) echo "error: linux-i386 would link glibc (CC32=$(CC32)); run ./build-musl-i386.sh first" >&2; exit 1 ;; \
+	esac
 
 # Download distribution images and QEMU
 download-images: download-freedos download-alpine download-qemu
