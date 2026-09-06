@@ -81,8 +81,14 @@ DOS and Linux senders/receivers, with both small and large files.
 
 ### Test Requirements
 
-- **QEMU** (built from the `qemu/` submodule — see [qemu-device/README.md](qemu-device/README.md))
+- **QEMU** with the LapLink device, built into `qemu/install` by `make download-qemu`
+  (needs `git`, `python3`, `ninja-build`, `pkg-config`, `libglib2.0-dev`, `libpixman-1-dev`)
+- **FreeDOS and Alpine images**, fetched by `make download-images` (needs `wget`, `unzip`)
 - **gcc-multilib** (for building `linux-i386` static binaries, with or without the musl toolchain)
+- **mtools**, **genisoimage** (for `isoinfo`), and **cpio** for building the test floppy and initramfs images
+
+Paths are all relative to the checkout; nothing needs to be installed outside it
+apart from the packages above.
 
 ## Usage
 
