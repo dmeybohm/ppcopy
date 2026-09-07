@@ -2,9 +2,16 @@
 ; ppwrite.nasm -- Send files through a parallel port connected
 ;                  with a laplink cable from DOS/DOSEMU/FreeDOS
 ;
+;	ppwrite file
+;
+; An optional hex base address selects a parallel port other than 0x378:
+;
+;	ppwrite file 278
+;
 
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
+%define CMD_TAIL	0x81		; command line in the PSP, CR-terminated
 %define META_ACK	0x1
 %define DATA_ACK	0x2
 
@@ -16,6 +23,32 @@
 ;
 %ifndef DEBUG
 %define DEBUG		0	; 0, 1, or 2 (can be overridden from command line)
+%endif
+
+;
+; Accept an optional port address on the command line.  Turn off for the
+; smallest possible binary; the port is then fixed at BASE_PORT.
+;
+%ifndef PORT_ARG
+%define PORT_ARG	1	; 0 or 1 (can be overridden from command line)
+%endif
+
+; Load the data (base) or status (base+1) port address into dx
+%if PORT_ARG
+%macro LOAD_BASE 0
+	mov dx,[base_port]
+%endmacro
+%macro LOAD_STATUS 0
+	mov dx,[base_port]
+	inc dx
+%endmacro
+%else
+%macro LOAD_BASE 0
+	mov dx,BASE_PORT
+%endmacro
+%macro LOAD_STATUS 0
+	mov dx,DATA_PORT
+%endmacro
 %endif
 
 ; Used for ``readability'' only
@@ -90,7 +123,7 @@
 	push cx
 	push bx
 	mov bx,dx		; save clock in BL
-	mov dx,DATA_PORT
+	LOAD_STATUS
 %%redo:
 	in al,dx		; read raw from status port
 	mov cl,al		; save raw for stability check
@@ -119,7 +152,7 @@
 ;
 start:
 	; Parse command line for filename
-	mov ax,0x81		; start with 0xb8 so file(1) detects COM
+	mov ax,CMD_TAIL		; start with 0xb8 so file(1) detects COM
 	xchg ax,si
 	cld
 .skip_spaces:
@@ -144,6 +177,12 @@ start:
 	jne .find_end
 .got_end:
 	mov byte [si-1],0	; null-terminate filename
+%if PORT_ARG
+	cmp al,' '		; a space means a port argument may follow;
+	je .open		;   a CR ends the line, so stay on the 0 that
+	dec si			;   replaced it and parse_port sees no argument
+.open:
+%endif
 
 	; Open file for reading
 	mov ah,0x3d		; DOS open file
@@ -152,12 +191,14 @@ start:
 	DIE_IF c,SYM(open_err_str)
 	mov bx,ax		; BX = file handle (preserved throughout)
 
+%if PORT_ARG
+	call parse_port		; SI still points past the filename
+%endif
+
 	; Initialize port
-	push dx
-	mov dx,BASE_PORT
+	LOAD_BASE
 	xor al,al
 	out dx,al
-	pop dx
 
 	; Send padding byte without ack validation (reader may not have started)
 	mov byte [expected_ack], 0
@@ -258,7 +299,7 @@ write_nibble:
 	and al,0x0f
 	or al,dl
 	push dx
-	mov dx,BASE_PORT
+	LOAD_BASE
 	out dx,al
 	pop dx
 	ret
@@ -319,6 +360,39 @@ write_word:
 	call write_octet
 	pop cx
 	ret
+
+%if PORT_ARG
+; parse_port: read an optional hex port address from the command line
+;
+; Input: ds:si -> command tail (CR-terminated)
+; Output: [base_port] updated if an argument was given
+; Clobbers: ax, cx, dx, si
+;
+; Any character below a space (CR, or the 0 that ppwrite leaves in place
+; of it) ends the line.  Digits are not validated.
+parse_port:
+	lodsb
+	cmp al,' '
+	je parse_port			; skip leading spaces
+	jb .done			; end of line: keep the default
+	xor dx,dx
+	mov cl,4
+.digit:
+	sub al,'0'			; '0'..'9' -> 0..9
+	cmp al,10
+	jb .have
+	and al,0x1f			; 'A'..'F' and 'a'..'f' -> 0x11..0x16
+	sub al,7			;   -> 10..15
+.have:
+	shl dx,cl
+	or dl,al
+	lodsb
+	cmp al,' '
+	ja .digit			; stop at space or end of line
+	mov [base_port],dx
+.done:
+	ret
+%endif ; PORT_ARG
 
 
 %if (DEBUG > 1)
@@ -441,6 +515,9 @@ sending_data_str:	db 'sending data$'
 
 
 expected_ack:		db 0
+%if PORT_ARG
+base_port:		dw BASE_PORT
+%endif
 ack_err_str:		db 'error: unexpected ACK type',13,10,'$'
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety

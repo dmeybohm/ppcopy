@@ -68,12 +68,11 @@ int main(int argc, char *argv[])
 	off_t total_size, remaining, sent;
 	unsigned short chunk_size, sum, i;
 
-	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
-
-	if (argc != 2) {
-		fprintf(stderr, "usage: ppwrite <file>\n");
+	if (argc < 2 || argc > 3) {
+		fprintf(stderr, "usage: ppwrite <file> [port]\n");
 		exit(1);
 	}
+	setup_port(argc == 3 ? argv[2] : NULL);
 
 	fp = fopen(argv[1], "rb");
 	if (fp == NULL) {

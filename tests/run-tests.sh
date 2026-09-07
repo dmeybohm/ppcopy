@@ -19,6 +19,10 @@ TMP_DIR="$SCRIPT_DIR/tmp"
 TIMEOUT_SMALL=90
 TIMEOUT_LARGE=180
 
+# Parallel port base address (hex, no 0x) passed to the programs and to the
+# QEMU device.  Empty means the programs' built-in default of 378.
+TEST_PORT=""
+
 TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -206,6 +210,13 @@ prepare_linux_initrd() {
 
 # ─── Run a single test ──────────────────────────────────────────────────────
 
+# laplink_device SIDE STATE_FILE
+# The -device argument for the LapLink port, honouring TEST_PORT.
+laplink_device() {
+    local side="$1" state="$2"
+    echo "isa-laplink,side=$side,file=$state${TEST_PORT:+,iobase=0x$TEST_PORT}"
+}
+
 # launch_dos_vm SIDE STATE_FILE BOOT_FLOPPY AUX_HDD
 launch_dos_vm() {
     local side="$1" state="$2" floppy="$3" hdd="$4"
@@ -213,7 +224,7 @@ launch_dos_vm() {
         -drive file="$floppy",format=raw,if=floppy \
         -drive file="$hdd",format=raw \
         -display none -no-reboot -parallel none \
-        -device isa-laplink,side="$side",file="$state" 2>/dev/null &
+        -device "$(laplink_device "$side" "$state")" 2>/dev/null &
     QEMU_PIDS+=($!)
 }
 
@@ -221,9 +232,9 @@ launch_dos_vm() {
 launch_linux_vm() {
     local side="$1" state="$2" vmlinuz="$3" initrd="$4" role="$5" log="$6" testfile="$7"
     "$QEMU" -m 128 -kernel "$vmlinuz" -initrd "$initrd" \
-        -append "console=ttyS0 init=/init ppcopy_role=$role ppcopy_file=/$testfile" \
+        -append "console=ttyS0 init=/init ppcopy_role=$role ppcopy_file=/$testfile${TEST_PORT:+ ppcopy_port=$TEST_PORT}" \
         -display none -serial file:"$log" -no-reboot \
-        -parallel none -device isa-laplink,side="$side",file="$state" 2>/dev/null &
+        -parallel none -device "$(laplink_device "$side" "$state")" 2>/dev/null &
     QEMU_PIDS+=($!)
 }
 
@@ -267,9 +278,9 @@ test_dos_to_linux() {
     local state="$test_dir/laplink.state"
     truncate -s 2 "$state"
 
-    # Prepare DOS writer: floppy boots, runs PPWRITE.COM C:\TESTDATA.TXT
+    # Prepare DOS writer: floppy boots, runs PPWRITE.COM C:\TESTDATA.TXT [port]
     local floppy="$test_dir/boot.img"
-    prepare_dos_boot_floppy "$floppy" "C:\PPWRITE.COM C:\TESTDATA.TXT"
+    prepare_dos_boot_floppy "$floppy" "C:\PPWRITE.COM C:\TESTDATA.TXT${TEST_PORT:+ $TEST_PORT}"
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
@@ -327,9 +338,10 @@ test_linux_to_dos() {
     local initrd="$test_dir/initrd.img"
     prepare_linux_initrd "$initrd" "writer" "$testdata"
 
-    # Prepare DOS reader: floppy boots, runs PPREAD.COM with stdout redirected to C:\PPREAD.OUT
+    # Prepare DOS reader: floppy boots, runs PPREAD.COM [port] with stdout
+    # redirected to C:\PPREAD.OUT
     local floppy="$test_dir/boot.img"
-    prepare_dos_boot_floppy "$floppy" "C:\PPREAD.COM > C:\PPREAD.OUT"
+    prepare_dos_boot_floppy "$floppy" "C:\PPREAD.COM${TEST_PORT:+ $TEST_PORT} > C:\PPREAD.OUT"
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
@@ -381,7 +393,7 @@ test_dos_to_dos() {
 
     # Prepare DOS writer
     local writer_floppy="$test_dir/writer-boot.img"
-    prepare_dos_boot_floppy "$writer_floppy" "C:\PPWRITE.COM C:\TESTDATA.TXT"
+    prepare_dos_boot_floppy "$writer_floppy" "C:\PPWRITE.COM C:\TESTDATA.TXT${TEST_PORT:+ $TEST_PORT}"
 
     local writer_hdd="$test_dir/writer-hdd.img"
     prepare_dos_hdd "$writer_hdd" \
@@ -390,7 +402,7 @@ test_dos_to_dos() {
 
     # Prepare DOS reader
     local reader_floppy="$test_dir/reader-boot.img"
-    prepare_dos_boot_floppy "$reader_floppy" "C:\PPREAD.COM > C:\PPREAD.OUT"
+    prepare_dos_boot_floppy "$reader_floppy" "C:\PPREAD.COM${TEST_PORT:+ $TEST_PORT} > C:\PPREAD.OUT"
 
     local reader_hdd="$test_dir/reader-hdd.img"
     prepare_dos_hdd "$reader_hdd" \
@@ -533,7 +545,7 @@ TESTDATA_LARGE="$TMP_DIR/testdata-large.txt"
 generate_large_testdata "$TESTDATA_LARGE"
 
 # Run tests
-TOTAL_TESTS=9
+TOTAL_TESTS=11
 
 run_test() {
     local num="$1" label="$2" func="$3"
@@ -560,6 +572,13 @@ run_test 6 "Linux → DOS (large)"   test_linux_to_dos   "$TESTDATA_LARGE" 6
 run_test 7 "DOS → DOS (large)"     test_dos_to_dos     "$TESTDATA_LARGE" 7
 run_test 8 "Linux → Linux (large)" test_linux_to_linux "$TESTDATA_LARGE" 8
 run_test 9 "DOS missing file errorlevel" test_dos_missing_file 9
+
+# Non-default port: the QEMU device moves to 0x278 and every program is told
+# about it on its command line.  Two directions cover all four programs.
+TEST_PORT=278
+run_test 10 "DOS → Linux (port 278)"   test_dos_to_linux   "$TESTDATA_SMALL" 10
+run_test 11 "Linux → DOS (port 278)"   test_linux_to_dos   "$TESTDATA_SMALL" 11
+TEST_PORT=""
 
 echo ""
 if [ "$TESTS_FAILED" -eq 0 ]; then

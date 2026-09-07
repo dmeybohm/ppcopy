@@ -7,9 +7,14 @@
 ;
 ;	ppread > file
 ;
+; An optional hex base address selects a parallel port other than 0x378:
+;
+;	ppread 278 > file
+;
 %define BASE_PORT	0x378
 %define DATA_PORT	(BASE_PORT+1)
 %define STDOUT		1
+%define CMD_TAIL	0x81		; command line in the PSP, CR-terminated
 
 %define META_ACK	0x1
 
@@ -21,6 +26,32 @@
 %define DEBUG		0	; 0, 1, or 2 (can be overridden from command line)
 %endif
 %define CLOSE_FILE	1
+
+;
+; Accept an optional port address on the command line.  Turn off for the
+; smallest possible binary; the port is then fixed at BASE_PORT.
+;
+%ifndef PORT_ARG
+%define PORT_ARG	1	; 0 or 1 (can be overridden from command line)
+%endif
+
+; Load the data (base) or status (base+1) port address into dx
+%if PORT_ARG
+%macro LOAD_BASE 0
+	mov dx,[base_port]
+%endmacro
+%macro LOAD_STATUS 0
+	mov dx,[base_port]
+	inc dx
+%endmacro
+%else
+%macro LOAD_BASE 0
+	mov dx,BASE_PORT
+%endmacro
+%macro LOAD_STATUS 0
+	mov dx,DATA_PORT
+%endmacro
+%endif
 
 ; Used for ``readability'' only
 %define PTR(x)		x
@@ -87,8 +118,13 @@ start:
 	xchg bx,ax			; output handle, kept in bx throughout
 	cld
 
+%if PORT_ARG
+	mov si,CMD_TAIL
+	call parse_port
+%endif
+
 	; Initialize port so writer sees a known state
-	mov dx,BASE_PORT
+	LOAD_BASE
 	mov al,0x10
 	out dx,al
 
@@ -195,7 +231,7 @@ exit:
 %macro DO_READ 0 ;(dl = clock, al = output)
 	push cx
 	mov ch,dl	; clock aliased to ch
-	mov dx,DATA_PORT
+	LOAD_STATUS
 .redo:
 	in al,dx
 	mov cl,al	; cl = first value read
@@ -218,7 +254,7 @@ read_status: ;(dx = clock)
 	shr dl,3
 	mov al,[current_ack]
 	or al,dl
-	mov dx,BASE_PORT
+	LOAD_BASE
 	out dx,al
 	pop ax
 	ret
@@ -241,6 +277,39 @@ read_word:
 	mov ah,al			;   saves the xchg instruction.
 	call read_octet
 	ret
+
+%if PORT_ARG
+; parse_port: read an optional hex port address from the command line
+;
+; Input: ds:si -> command tail (CR-terminated)
+; Output: [base_port] updated if an argument was given
+; Clobbers: ax, cx, dx, si
+;
+; Any character below a space (CR, or the 0 that ppwrite leaves in place
+; of it) ends the line.  Digits are not validated.
+parse_port:
+	lodsb
+	cmp al,' '
+	je parse_port			; skip leading spaces
+	jb .done			; end of line: keep the default
+	xor dx,dx
+	mov cl,4
+.digit:
+	sub al,'0'			; '0'..'9' -> 0..9
+	cmp al,10
+	jb .have
+	and al,0x1f			; 'A'..'F' and 'a'..'f' -> 0x11..0x16
+	sub al,7			;   -> 10..15
+.have:
+	shl dx,cl
+	or dl,al
+	lodsb
+	cmp al,' '
+	ja .digit			; stop at space or end of line
+	mov [base_port],dx
+.done:
+	ret
+%endif ; PORT_ARG
 
 %if (DEBUG > 1)
 
@@ -370,6 +439,9 @@ not_restarting_str:	db 'not restarting read loop','$'
 
 magic_str:		db 'ppcopy'
 current_ack:		db META_ACK	; must follow magic_str (sentinel for scan)
+%if PORT_ARG
+base_port:		dw BASE_PORT
+%endif
 
 	absolute 0x100 + $-start + 10	; for 256 bytes PSP + code-size + safety
 block:			resw 1 ; expands to fill rest of 64k block
