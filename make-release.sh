@@ -34,7 +34,13 @@ for bin in ppread-i386 ppwrite-i386 ppread-x64 ppwrite-x64; do
     strip --strip-all -o "$STAGE/$bin" "$bin"
 done
 
-cp README.md HACKING.md PROTOCOL.md COPYING "$STAGE/"
+# The docs link to qemu-device/, which is not shipped; point those links at
+# GitHub instead so they work from inside the archive.
+for doc in README.md HACKING.md; do
+    sed 's|](qemu-device/README.md)|](https://github.com/dmeybohm/ppcopy/blob/master/qemu-device/README.md)|g' \
+        "$doc" > "$STAGE/$doc"
+done
+cp PROTOCOL.md COPYING "$STAGE/"
 
 (cd "$DIST" && tar czf "$NAME.tar.gz" "$NAME")
 if command -v zip >/dev/null 2>&1; then
