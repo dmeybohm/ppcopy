@@ -34,7 +34,7 @@ for bin in ppread-i386 ppwrite-i386 ppread-x64 ppwrite-x64; do
     strip --strip-all -o "$STAGE/$bin" "$bin"
 done
 
-cp README.md PROTOCOL.md COPYING "$STAGE/"
+cp README.md HACKING.md PROTOCOL.md COPYING "$STAGE/"
 
 (cd "$DIST" && tar czf "$NAME.tar.gz" "$NAME")
 if command -v zip >/dev/null 2>&1; then
