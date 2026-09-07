@@ -19,6 +19,9 @@ ASFLAGS = -fbin
 
 # Debug level for assembly builds (0=minimal, 1=errors, 2=verbose)
 DEBUG ?= 0
+# Port argument support for assembly builds (1=accept a port on the command
+# line, 0=fixed at 0x378 for the smallest binary)
+PORT_ARG ?= 1
 
 .PHONY: all linux linux-i386 linux-x64 dos clean build-musl-i386 check-release-toolchain download-images download-freedos download-alpine download-qemu update-floppies test
 
@@ -87,10 +90,10 @@ ppwrite-x64: ppwrite-x64.o ppcopy-x64.o
 
 # DOS assembly programs
 ppread.com: ppread.nasm
-	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
+	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) -DPORT_ARG=$(PORT_ARG) $< -o $@
 
 ppwrite.com: ppwrite.nasm
-	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) $< -o $@
+	$(AS) $(ASFLAGS) -DDEBUG=$(DEBUG) -DPORT_ARG=$(PORT_ARG) $< -o $@
 
 # Build the 32-bit musl toolchain used by linux-i386
 build-musl-i386:

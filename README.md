@@ -35,16 +35,25 @@ make dos         # Build only DOS programs (ppread.com, ppwrite.com)
 The DOS assembly programs support different debug levels:
 
 ```sh
-make ppread.com DEBUG=0   # Minimal size (190 bytes, default)
-make ppread.com DEBUG=1   # With error messages (289 bytes)
-make ppread.com DEBUG=2   # Verbose debugging (522 bytes)
+make ppread.com DEBUG=0   # Minimal size (237 bytes, default)
+make ppread.com DEBUG=1   # With error messages (339 bytes)
+make ppread.com DEBUG=2   # Verbose debugging (569 bytes)
 
-make ppwrite.com DEBUG=0  # Minimal size (default)
-make ppwrite.com DEBUG=1  # With error messages
-make ppwrite.com DEBUG=2  # Verbose debugging
+make ppwrite.com DEBUG=0  # Minimal size (422 bytes, default)
+make ppwrite.com DEBUG=1  # With error messages (467 bytes)
+make ppwrite.com DEBUG=2  # Verbose debugging (629 bytes)
 ```
 
-The `DEBUG=0` build is optimized for manual entry via the DOS `DEBUG` utility.
+They also accept an optional parallel port address on the command line
+(see [Choosing the parallel port](#choosing-the-parallel-port)). That
+support can be assembled out to save around fifty bytes, which helps when
+typing the program in by hand with the DOS `DEBUG` utility; the port is then
+fixed at `378`:
+
+```sh
+make ppread.com PORT_ARG=0   # 190 bytes with DEBUG=0
+make ppwrite.com PORT_ARG=0  # 371 bytes with DEBUG=0
+```
 
 ## Making a release
 
@@ -115,6 +124,23 @@ Replacing `<output>` with whatever file you want to copy.
 
 The file will be written to `<output>`
 
+### Choosing the parallel port
+
+All four programs use the parallel port at I/O address `378` (LPT1 on most
+machines) unless told otherwise. To use a different port, give its base
+address in hex as the last argument. It is the only argument to `ppread`
+and follows the file name for `ppwrite`, on both Linux and DOS:
+
+```sh
+ppwrite <file> 278
+ppread 278 > <output>
+```
+
+Only the base address is needed; the status register at the next address
+up is found from it. The usual addresses are `378` for LPT1, `278` for
+LPT2, and `3bc` for the port on an old monochrome display adapter. The
+Linux programs also accept a `0x` prefix.
+
 ### Usage on DOS
 
 There are assembly language versions that you can use for reading and writing on
@@ -138,6 +164,9 @@ so it must be redirected to a file. Error and debug messages (in the
 in the output file. The errorlevel is 1 if anything went wrong, including
 running out of disk space.
 
+To read from a port other than `378`, put its hex address before the
+redirection, for example `ppread 278 > output`.
+
 #### Sending files from DOS
 
 `ppwrite.com` can send files from DOS, enabling DOS-to-DOS or DOS-to-Linux
@@ -149,6 +178,13 @@ ppwrite <file>
 
 On the receiving end, run `ppread` on Linux or `ppread` on another DOS
 machine.
+
+To send through a port other than `378`, add its hex address after the
+file name, for example `ppwrite <file> 278`.
+
+The DOS programs do not check the address for typos: anything that is not
+a hex digit is silently taken as one. Builds made with `PORT_ARG=0` ignore
+the argument entirely and always use `378`.
 
 ## QEMU Device
 

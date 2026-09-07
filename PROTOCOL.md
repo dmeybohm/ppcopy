@@ -7,13 +7,15 @@ implementations (`ppwrite.c`, `ppread.c`) follow it.
 
 ## Physical Layer
 
-Communication uses the PC parallel port at base address `0x378`:
+Communication uses a PC parallel port. The base address defaults to
+`0x378` (LPT1 on most machines) and can be given on the command line of
+every program; only the data and status registers are used:
 
-| Port          | Address  | Direction | Purpose          |
-|---------------|----------|-----------|------------------|
-| Data          | `0x378`  | Out       | Send nibbles     |
-| Status        | `0x379`  | In        | Receive nibbles  |
-| Control       | `0x37A`  | Out       | (unused)         |
+| Port          | Address    | Direction | Purpose          |
+|---------------|------------|-----------|------------------|
+| Data          | `base`     | Out       | Send nibbles     |
+| Status        | `base + 1` | In        | Receive nibbles  |
+| Control       | `base + 2` | Out       | (unused)         |
 
 Data is sent 4 bits (one nibble) at a time, using a clock bit for
 synchronization.
@@ -74,8 +76,8 @@ self-synchronize.
 ### Reader Port Initialization
 
 Before scanning for the start sequence, the reader writes `0x10` to the
-data port (`BASE_PORT`). This ensures the writer sees a known initial
-state when it begins sending.
+data port. This ensures the writer sees a known initial state when it
+begins sending.
 
 ### Chunk Structure
 

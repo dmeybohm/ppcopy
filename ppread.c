@@ -32,14 +32,18 @@ static unsigned short read_word(void)
 	return high << 8 | low;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	static unsigned char packet_buf[32767];
 	unsigned short checksum, size;
 	unsigned short sum, i;
 	FILE *fout;
 
-	if (ioperm(BASEPORT, 8, 1)) { perror("ioperm"); exit(1); }
+	if (argc > 2) {
+		fprintf(stderr, "usage: ppread [port]\n");
+		exit(1);
+	}
+	setup_port(argc == 2 ? argv[1] : NULL);
 
 	fout = stdout;
 
