@@ -48,12 +48,15 @@ make ppwrite.com PORT_ARG=0  # 371 bytes with DEBUG=0
 ## Making a release
 
 ```sh
-./make-release.sh [VERSION]
+./make-release.sh [--no-tests] [VERSION]
 ```
 
 This builds the DOS programs plus static Linux binaries for i386 and x86-64,
 strips them, and bundles them with the docs into `dist/ppcopy-VERSION.tar.gz`
 and `.zip` with a SHA-256 checksum file. `VERSION` defaults to `git describe`.
+It then extracts the tarball and runs the integration tests against the
+binaries inside it, so what gets tested is exactly what ships; `--no-tests`
+skips that step.
 It needs `nasm`, `musl-tools` (for `linux-x64`), and the 32-bit musl toolchain
 for `linux-i386`. Ubuntu only packages musl for x86_64, so build the 32-bit one
 from source once with:
@@ -77,6 +80,14 @@ make test
 
 This uses QEMU to run end-to-end transfer tests between all combinations of
 DOS and Linux senders/receivers, with both small and large files.
+
+The tests build and use the binaries in the working tree. To test prebuilt
+binaries instead, point `PPCOPY_BIN_DIR` at a directory containing
+`ppread.com`, `ppwrite.com`, `ppread-i386`, and `ppwrite-i386`:
+
+```sh
+PPCOPY_BIN_DIR=dist/ppcopy-v1.0 ./tests/run-tests.sh
+```
 
 ### Test requirements
 
