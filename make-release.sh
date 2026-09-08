@@ -4,15 +4,26 @@
 # Bundles the DOS programs (ppread.com, ppwrite.com) with static Linux
 # binaries for i386 and x86-64 into a versioned tarball and zip.
 #
-# Usage: ./make-release.sh [VERSION]
+# Usage: ./make-release.sh [--no-tests] [VERSION]
 #   VERSION defaults to `git describe --tags --always`.
 #
-# Requirements: nasm, musl-tools (for -x64), and the 32-bit musl
-# toolchain from ./build-musl-i386.sh (for -i386).
+# After building, the integration tests are run against the binaries
+# extracted from the tarball (see tests/run-tests.sh).  --no-tests skips
+# this.
+#
+# Requirements: nasm, musl-tools (for -x64), the 32-bit musl toolchain
+# from ./build-musl-i386.sh (for -i386), and the test prerequisites in
+# HACKING.md unless --no-tests is given.
 
 set -eu
 
 cd "$(dirname "$0")"
+
+RUN_TESTS=1
+if [ "${1:-}" = "--no-tests" ]; then
+    RUN_TESTS=0
+    shift
+fi
 
 VERSION="${1:-$(git describe --tags --always --dirty 2>/dev/null || echo unknown)}"
 NAME="ppcopy-$VERSION"
@@ -48,6 +59,19 @@ if command -v zip >/dev/null 2>&1; then
 fi
 
 (cd "$DIST" && sha256sum "$NAME".tar.gz "$NAME".zip 2>/dev/null > "$NAME.sha256")
+
+# Test what actually ships: extract the tarball and point the test suite at
+# the binaries inside it instead of the ones in the working tree.
+if [ "$RUN_TESTS" = 1 ]; then
+    TESTDIR="$DIST/test-$NAME"
+    rm -rf "$TESTDIR"
+    mkdir -p "$TESTDIR"
+    tar xzf "$DIST/$NAME.tar.gz" -C "$TESTDIR"
+    echo
+    echo "Running integration tests on $DIST/$NAME.tar.gz"
+    PPCOPY_BIN_DIR="$TESTDIR/$NAME" ./tests/run-tests.sh
+    rm -rf "$TESTDIR"
+fi
 
 echo
 echo "Release contents:"

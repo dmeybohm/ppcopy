@@ -9,6 +9,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# Directory holding the binaries under test (ppread.com, ppwrite.com,
+# ppread-i386, ppwrite-i386).  Defaults to the project dir, where they are
+# built by make; set PPCOPY_BIN_DIR to test prebuilt binaries (e.g. an
+# extracted release) without rebuilding.
+BIN_DIR="${PPCOPY_BIN_DIR:-$PROJECT_DIR}"
 QEMU="${QEMU:-$PROJECT_DIR/qemu/install/bin/qemu-system-i386}"
 IMAGES_DIR="$PROJECT_DIR/qemu-device/images"
 FREEDOS_IMG="$IMAGES_DIR/FD14BOOT.img"
@@ -188,8 +193,8 @@ prepare_linux_initrd() {
     mkdir -p "$overlay_dir"
 
     # Copy stripped binaries
-    cp "$PROJECT_DIR/ppread-i386" "$overlay_dir/ppread-i386"
-    cp "$PROJECT_DIR/ppwrite-i386" "$overlay_dir/ppwrite-i386"
+    cp "$BIN_DIR/ppread-i386" "$overlay_dir/ppread-i386"
+    cp "$BIN_DIR/ppwrite-i386" "$overlay_dir/ppwrite-i386"
     strip --strip-all "$overlay_dir/ppread-i386" "$overlay_dir/ppwrite-i386"
     chmod +x "$overlay_dir/ppread-i386" "$overlay_dir/ppwrite-i386"
 
@@ -284,7 +289,7 @@ test_dos_to_linux() {
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
-        "$PROJECT_DIR/ppwrite.com:PPWRITE.COM" \
+        "$BIN_DIR/ppwrite.com:PPWRITE.COM" \
         "$testdata:TESTDATA.TXT"
 
     # Prepare Linux reader
@@ -345,7 +350,7 @@ test_linux_to_dos() {
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
-        "$PROJECT_DIR/ppread.com:PPREAD.COM"
+        "$BIN_DIR/ppread.com:PPREAD.COM"
 
     local log="$test_dir/serial.log"
 
@@ -397,7 +402,7 @@ test_dos_to_dos() {
 
     local writer_hdd="$test_dir/writer-hdd.img"
     prepare_dos_hdd "$writer_hdd" \
-        "$PROJECT_DIR/ppwrite.com:PPWRITE.COM" \
+        "$BIN_DIR/ppwrite.com:PPWRITE.COM" \
         "$testdata:TESTDATA.TXT"
 
     # Prepare DOS reader
@@ -406,7 +411,7 @@ test_dos_to_dos() {
 
     local reader_hdd="$test_dir/reader-hdd.img"
     prepare_dos_hdd "$reader_hdd" \
-        "$PROJECT_DIR/ppread.com:PPREAD.COM"
+        "$BIN_DIR/ppread.com:PPREAD.COM"
 
     # Launch VMs
     launch_dos_vm 0 "$state" "$writer_floppy" "$writer_hdd"
@@ -506,7 +511,7 @@ test_dos_missing_file() {
 
     local hdd="$test_dir/hdd.img"
     prepare_dos_hdd "$hdd" \
-        "$PROJECT_DIR/ppwrite.com:PPWRITE.COM"
+        "$BIN_DIR/ppwrite.com:PPWRITE.COM"
 
     launch_dos_vm 0 "$state" "$floppy" "$hdd"
     local dos_pid=${QEMU_PIDS[-1]}
@@ -528,9 +533,19 @@ echo "========================"
 
 check_prerequisites
 
-# Build binaries
-echo "Building binaries..."
-make -C "$PROJECT_DIR" dos linux-i386
+# Build binaries, unless testing prebuilt ones
+if [ -n "${PPCOPY_BIN_DIR:-}" ]; then
+    echo "Using binaries from $BIN_DIR"
+    for bin in ppread.com ppwrite.com ppread-i386 ppwrite-i386; do
+        if [ ! -f "$BIN_DIR/$bin" ]; then
+            echo "ERROR: $BIN_DIR/$bin not found"
+            exit 1
+        fi
+    done
+else
+    echo "Building binaries..."
+    make -C "$PROJECT_DIR" dos linux-i386
+fi
 
 # Create temp directory
 rm -rf "$TMP_DIR"
